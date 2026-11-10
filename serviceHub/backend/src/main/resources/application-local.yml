@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:servicehub;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    defer-datasource-initialization: true
+  h2:
+    console:
+      enabled: true
+app:
+  seed:
+    enabled: true
+  jwt:
+    secret: ${JWT_SECRET:local-only-servicehub-signing-key-change-before-deployment}
