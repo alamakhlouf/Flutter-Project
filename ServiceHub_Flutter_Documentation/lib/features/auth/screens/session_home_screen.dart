@@ -2,8 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_routes.dart';
 import '../../../design_system/app_colors.dart';
+import '../../auth/models/auth_user.dart';
 import '../../profile/profile_keys.dart';
+import '../../profile/screens/edit_profile_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../profile/services/profile_service.dart';
+import '../../services/models/service_model.dart';
+import '../../services/screens/my_services_screen.dart';
+import '../../services/screens/service_details_screen.dart';
+import '../../services/screens/service_form_screen.dart';
+import '../../services/screens/services_catalog_screen.dart';
+import '../../services/services_keys.dart';
 import '../auth_keys.dart';
 import '../auth_scope.dart';
 import '../widgets/auth_widgets.dart';
@@ -24,13 +33,69 @@ class SessionHomeScreen extends StatelessWidget {
       initialRoute: AppRoutes.home,
       onGenerateInitialRoutes: (navigator, initialRoute) => [_homeRoute()],
       onGenerateRoute: (settings) {
-        if (settings.name == AppRoutes.profile) {
-          return MaterialPageRoute<void>(
-            settings: settings,
-            builder: (_) => const ProfileScreen(),
-          );
+        switch (settings.name) {
+          case AppRoutes.profile:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const ProfileScreen(),
+            );
+          case AppRoutes.editProfile:
+            final args = settings.arguments;
+            if (args is Map<String, dynamic> &&
+                args['user'] is AuthUser &&
+                args['profileService'] is ProfileService) {
+              return MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => EditProfileScreen(
+                  user: args['user'] as AuthUser,
+                  profileService: args['profileService'] as ProfileService,
+                ),
+              );
+            }
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const ProfileScreen(),
+            );
+          case AppRoutes.servicesCatalog:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const ServicesCatalogScreen(),
+            );
+          case AppRoutes.serviceDetails:
+            final service = settings.arguments is ServiceModel
+                ? settings.arguments as ServiceModel
+                : null;
+            final serviceId = settings.arguments is String
+                ? settings.arguments as String
+                : null;
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => ServiceDetailsScreen(
+                service: service,
+                serviceId: serviceId,
+              ),
+            );
+          case AppRoutes.myServices:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const MyServicesScreen(),
+            );
+          case AppRoutes.createService:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const ServiceFormScreen(),
+            );
+          case AppRoutes.editService:
+            final service = settings.arguments is ServiceModel
+                ? settings.arguments as ServiceModel
+                : null;
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => ServiceFormScreen(service: service),
+            );
+          default:
+            return _homeRoute();
         }
-        return _homeRoute();
       },
     );
   }
@@ -44,6 +109,7 @@ class _AccountHome extends StatelessWidget {
     final scope = AuthScope.of(context);
     final user = scope.user;
     final theme = Theme.of(context);
+
     return Scaffold(
       key: const ValueKey(AppRoutes.home),
       appBar: AppBar(title: const Text('ServiceHub')),
@@ -88,9 +154,32 @@ class _AccountHome extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            FilledButton(
+            FilledButton.icon(
+              key: ServicesKeys.openCatalog,
+              icon: const Icon(Icons.explore_outlined),
+              label: const Text('Browse Services Catalog'),
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(AppRoutes.servicesCatalog),
+            ),
+            if (user.role == UserRole.provider) ...[
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                key: ServicesKeys.openMyServices,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.surface,
+                ),
+                icon: const Icon(Icons.home_repair_service_outlined),
+                label: const Text('Manage My Services'),
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.myServices),
+              ),
+            ],
+            const SizedBox(height: 12),
+            OutlinedButton(
               key: ProfileKeys.open,
-              onPressed: () => Navigator.of(context).pushNamed(AppRoutes.profile),
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(AppRoutes.profile),
               child: const Text('My profile'),
             ),
             const SizedBox(height: 12),
