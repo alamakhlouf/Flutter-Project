@@ -25,6 +25,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/api/auth/register", "/api/auth/login", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/h2-console/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/services/my", "/api/products/my").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/services/**", "/api/providers/**", "/api/products/**", "/api/suppliers/**", "/api/workshops/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(errors).accessDeniedHandler(errors))

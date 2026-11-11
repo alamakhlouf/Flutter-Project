@@ -66,6 +66,10 @@ class MarketplaceRulesTest {
 
     @Test void ordersCalculateServerSideAndWorkshopRegistrationEnforcesCapacity() throws Exception {
         String customer=token(Role.CUSTOMER), anotherCustomer=token(Role.CUSTOMER), supplier=loginSeedSupplier(), provider=token(Role.PROVIDER);
+        mvc.perform(get("/api/products/my")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/services/my")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/products/my").header("Authorization","Bearer "+supplier)).andExpect(status().isOk());
+        mvc.perform(get("/api/products/my").header("Authorization","Bearer "+provider)).andExpect(status().isForbidden());
         JsonNode productList=body(mvc.perform(get("/api/products")).andExpect(status().isOk()).andReturn());
         String productId=productList.get("content").get(0).get("id").asText();
         JsonNode order=body(mvc.perform(post("/api/orders").header("Authorization","Bearer "+customer).contentType(MediaType.APPLICATION_JSON)

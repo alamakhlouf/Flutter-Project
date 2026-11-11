@@ -30,6 +30,9 @@ public class MarketplaceController {
            @RequestParam(defaultValue="") String category,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
         return market.listServices(search,category,pageable(page,size));
     }
+    @GetMapping("/services/my") public Page<ServiceDto> myServices(@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
+        return market.myServices(pageable(page,size));
+    }
     @GetMapping("/services/{id}") public ServiceDto service(@PathVariable UUID id) { return market.service(id); }
     @PostMapping("/services") public ServiceDto createService(@Valid @RequestBody ServiceRequest req) { return market.createService(req); }
     @PutMapping("/services/{id}") public ServiceDto updateService(@PathVariable UUID id,@Valid @RequestBody ServiceRequest req) { return market.updateService(id,req); }
@@ -54,6 +57,9 @@ public class MarketplaceController {
 
     @GetMapping("/suppliers") public List<UserDto> suppliers() { return market.suppliers(); }
     @GetMapping("/suppliers/{id}") public UserDto supplier(@PathVariable UUID id) { return market.supplier(id); }
+    @GetMapping("/products/my") public Page<ProductDto> myProducts(@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
+        return market.myProducts(pageable(page,size));
+    }
     @GetMapping("/products") public Page<ProductDto> products(@RequestParam(defaultValue="") String search,@RequestParam(defaultValue="") String category,
            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) { return market.listProducts(search,category,pageable(page,size)); }
     @GetMapping("/products/{id}") public ProductDto product(@PathVariable UUID id) { return market.product(id); }

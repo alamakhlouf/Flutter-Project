@@ -63,6 +63,10 @@ public class MarketplaceService {
     }
     public ServiceDto service(UUID id) { return DtoMapper.service(require(services.findById(id).filter(ServiceListing::isActive), "Service")); }
     public Page<ServiceDto> providerServices(UUID id, Pageable page) { return services.findByProviderIdAndActiveTrue(id, page).map(DtoMapper::service); }
+    public Page<ServiceDto> myServices(Pageable page) {
+        User u=actor(Role.PROVIDER);
+        return services.findByProviderId(u.getId(), page).map(DtoMapper::service);
+    }
     @Transactional public ServiceDto createService(ServiceRequest req) {
         User u=actor(Role.PROVIDER); ServiceListing s=new ServiceListing(); s.setProvider(u); copy(req,s); return DtoMapper.service(services.save(s));
     }
@@ -146,8 +150,12 @@ public class MarketplaceService {
         User u=require(users.findById(id).filter(x -> x.getRole()==Role.SUPPLIER),"Supplier"); return DtoMapper.user(u);
     }
     public Page<ProductDto> listProducts(String search,String category,Pageable page) {
-        return products.findByAvailableTrueAndNameContainingIgnoreCaseAndCategoryContainingIgnoreCase(
+        return products.findAvailableProducts(
                 search==null?"":search,category==null?"":category,page).map(DtoMapper::product);
+    }
+    public Page<ProductDto> myProducts(Pageable page) {
+        User supplier=actor(Role.SUPPLIER);
+        return products.findBySupplierId(supplier.getId(),page).map(DtoMapper::product);
     }
     public ProductDto product(UUID id) { return DtoMapper.product(require(products.findById(id).filter(SupplierProduct::isAvailable),"Product")); }
     @Transactional public ProductDto createProduct(ProductRequest r) {
