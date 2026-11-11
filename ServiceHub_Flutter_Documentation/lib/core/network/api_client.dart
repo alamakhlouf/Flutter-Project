@@ -29,6 +29,10 @@ class ApiClient {
   static const _timeout = Duration(seconds: 20);
 
   Future<Map<String, dynamic>> get(String path, {bool authenticated = true}) {
+    return _sendMap('GET', path, authenticated: authenticated);
+  }
+
+  Future<Object?> getJson(String path, {bool authenticated = true}) {
     return _send('GET', path, authenticated: authenticated);
   }
 
@@ -37,7 +41,7 @@ class ApiClient {
     Map<String, dynamic>? body,
     bool authenticated = false,
   }) {
-    return _send('POST', path, body: body, authenticated: authenticated);
+    return _sendMap('POST', path, body: body, authenticated: authenticated);
   }
 
   Future<Map<String, dynamic>> put(
@@ -45,7 +49,7 @@ class ApiClient {
     Map<String, dynamic>? body,
     bool authenticated = true,
   }) {
-    return _send('PUT', path, body: body, authenticated: authenticated);
+    return _sendMap('PUT', path, body: body, authenticated: authenticated);
   }
 
   Future<Map<String, dynamic>> patch(
@@ -53,14 +57,31 @@ class ApiClient {
     Map<String, dynamic>? body,
     bool authenticated = true,
   }) {
-    return _send('PATCH', path, body: body, authenticated: authenticated);
+    return _sendMap('PATCH', path, body: body, authenticated: authenticated);
   }
 
   Future<void> delete(String path, {bool authenticated = true}) async {
-    await _send('DELETE', path, authenticated: authenticated);
+    await _sendMap('DELETE', path, authenticated: authenticated);
   }
 
-  Future<Map<String, dynamic>> _send(
+  Future<Map<String, dynamic>> _sendMap(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    required bool authenticated,
+  }) async {
+    final response = await _send(
+      method,
+      path,
+      body: body,
+      authenticated: authenticated,
+    );
+    if (response is Map<String, dynamic>) return response;
+    if (response is Map) return Map<String, dynamic>.from(response);
+    throw ApiException(message: 'The server returned an unexpected response.');
+  }
+
+  Future<Object?> _send(
     String method,
     String path, {
     Map<String, dynamic>? body,
@@ -109,6 +130,7 @@ class ApiClient {
     final decoded = _decode(response);
     if (decoded is Map<String, dynamic>) return decoded;
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    if (decoded is List) return decoded;
     throw ApiException(
       message: 'The server returned an unexpected response.',
       statusCode: response.statusCode,

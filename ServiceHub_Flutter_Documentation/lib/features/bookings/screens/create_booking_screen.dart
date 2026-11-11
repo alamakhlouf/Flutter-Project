@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../design_system/app_colors.dart';
+import '../../auth/auth_scope.dart';
 import '../../services/models/service_model.dart';
 import '../bookings_keys.dart';
 import '../services/booking_service.dart';
@@ -79,7 +80,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     });
 
     try {
-      final apiClient = ApiClient.shared();
+      final apiClient =  AuthScope.of(context).api;
       final bookingService = BookingService(api: apiClient);
 
       await bookingService.createBooking(

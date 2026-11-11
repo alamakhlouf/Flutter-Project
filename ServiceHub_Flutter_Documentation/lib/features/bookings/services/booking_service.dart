@@ -7,7 +7,7 @@ class BookingService {
   final ApiClient api;
 
   Future<List<BookingModel>> fetchMyBookings() async {
-    final response = await api.get('/api/bookings/my', authenticated: true);
+    final response = await api.getJson('/api/bookings/my', authenticated: true);
     return _parseList(response);
   }
 
@@ -55,31 +55,36 @@ class BookingService {
     return BookingModel.fromJson(response);
   }
 
-  List<BookingModel> _parseList(Map<String, dynamic> response) {
-    final rawList = response['content'] ??
+  List<BookingModel> _parseList(Object? response) {
+    if (response is List) {
+      return response.map(_parseBooking).toList();
+    }
+    if (response is! Map) {
+      throw const FormatException('Unexpected bookings response');
+    }
+
+    final rawList =
+        response['content'] ??
         response['bookings'] ??
         response['items'] ??
         response['data'];
 
     if (rawList is List) {
-      return rawList
-          .map((item) {
-            if (item is Map<String, dynamic>) {
-              return BookingModel.fromJson(item);
-            }
-            if (item is Map) {
-              return BookingModel.fromJson(Map<String, dynamic>.from(item));
-            }
-            return null;
-          })
-          .whereType<BookingModel>()
-          .toList();
+      return rawList.map(_parseBooking).toList();
     }
 
     if (response.containsKey('id')) {
-      return [BookingModel.fromJson(response)];
+      return [_parseBooking(response)];
     }
 
-    return <BookingModel>[];
+    throw const FormatException('Unexpected bookings response');
+  }
+
+  BookingModel _parseBooking(Object? item) {
+    if (item is Map<String, dynamic>) return BookingModel.fromJson(item);
+    if (item is Map) {
+      return BookingModel.fromJson(Map<String, dynamic>.from(item));
+    }
+    throw const FormatException('Unexpected booking item');
   }
 }

@@ -60,6 +60,18 @@ void main() {
     expect(results.first.status, BookingStatus.pending);
   });
 
+  test('fetchMyBookings parses a top-level JSON array', () async {
+    final service = buildService((_) async {
+      return http.Response(jsonEncode([sampleBookingJson]), 200);
+    });
+
+    final results = await service.fetchMyBookings();
+
+    expect(results, hasLength(1));
+    expect(results.single.id, bookingId);
+    expect(results.single.serviceTitle, 'Deep Cleaning');
+  });
+
   test('getBookingById sends GET /api/bookings/{id}', () async {
     late String path;
     final service = buildService((request) async {
