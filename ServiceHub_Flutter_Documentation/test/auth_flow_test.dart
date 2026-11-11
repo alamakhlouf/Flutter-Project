@@ -148,6 +148,8 @@ void main() {
     expect(find.text('Hello, A Customer'), findsOneWidget);
     expect(find.text('Role'), findsOneWidget);
     expect(find.text('Customer'), findsOneWidget);
+    expect(find.text('Browse Inventory'), findsOneWidget);
+    expect(find.text('Manage My Inventory'), findsNothing);
     expect(storage.value, 'customer-token');
 
     await tester.tap(find.byKey(AuthKeys.logout));
@@ -159,6 +161,37 @@ void main() {
 
     expect(find.text('Welcome back'), findsOneWidget);
     expect(storage.value, isNull);
+  });
+
+  testWidgets('a supplier can manage inventory and browse the catalog', (
+    tester,
+  ) async {
+    final service = serviceFor(
+      MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'token': 'supplier-token',
+            'user': userBody(role: 'SUPPLIER', name: 'Sam Supplier'),
+          }),
+          200,
+        );
+      }),
+    );
+    await pumpApp(tester, service);
+    await tester.pump();
+
+    await tester.enterText(
+      find.byKey(AuthKeys.loginEmail),
+      'supplier@example.com',
+    );
+    await tester.enterText(find.byKey(AuthKeys.loginPassword), 'password123');
+    await tester.tap(find.byKey(AuthKeys.loginSubmit));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Browse Inventory'), findsOneWidget);
+    expect(find.text('Manage My Inventory'), findsOneWidget);
+    expect(find.text('Manage My Services'), findsNothing);
   });
 
   testWidgets('an administrator cannot use the mobile app', (tester) async {

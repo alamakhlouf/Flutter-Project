@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../app/app_routes.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/models/auth_user.dart';
+import '../../inventory/models/inventory_product_model.dart';
 import '../../inventory/models/inventory_item_model.dart';
 import '../../inventory/screens/inventory_form_screen.dart';
-import '../../inventory/screens/inventory_list_screen.dart';
+import '../../inventory/screens/inventory_catalog_screen.dart';
+import '../../inventory/screens/inventory_details_screen.dart';
+import '../../inventory/screens/supplier_inventory_screen.dart';
 import '../../profile/profile_keys.dart';
 import '../../profile/screens/edit_profile_screen.dart';
 import '../../profile/screens/profile_screen.dart';
@@ -73,10 +76,8 @@ class SessionHomeScreen extends StatelessWidget {
                 : null;
             return MaterialPageRoute<void>(
               settings: settings,
-              builder: (_) => ServiceDetailsScreen(
-                service: service,
-                serviceId: serviceId,
-              ),
+              builder: (_) =>
+                  ServiceDetailsScreen(service: service, serviceId: serviceId),
             );
           case AppRoutes.myServices:
             return MaterialPageRoute<void>(
@@ -99,7 +100,26 @@ class SessionHomeScreen extends StatelessWidget {
           case AppRoutes.inventoryList:
             return MaterialPageRoute<void>(
               settings: settings,
-              builder: (_) => const InventoryListScreen(),
+              builder: (_) => const SupplierInventoryScreen(),
+            );
+          case AppRoutes.inventoryCatalog:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const InventoryCatalogScreen(),
+            );
+          case AppRoutes.inventoryDetails:
+            final product = settings.arguments is InventoryProduct
+                ? settings.arguments as InventoryProduct
+                : null;
+            final productId = settings.arguments is String
+                ? settings.arguments as String
+                : null;
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => InventoryDetailsScreen(
+                product: product,
+                productId: productId,
+              ),
             );
           case AppRoutes.createInventory:
             return MaterialPageRoute<void>(
@@ -182,6 +202,13 @@ class _AccountHome extends StatelessWidget {
               onPressed: () =>
                   Navigator.of(context).pushNamed(AppRoutes.servicesCatalog),
             ),
+            FilledButton.icon(
+              key: const ValueKey('open_inventory_catalog'),
+              icon: const Icon(Icons.inventory_2_outlined),
+              label: const Text('Browse Inventory'),
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(AppRoutes.inventoryCatalog),
+            ),
             if (user.role == UserRole.provider) ...[
               const SizedBox(height: 12),
               FilledButton.icon(
@@ -195,6 +222,8 @@ class _AccountHome extends StatelessWidget {
                 onPressed: () =>
                     Navigator.of(context).pushNamed(AppRoutes.myServices),
               ),
+            ],
+            if (user.role == UserRole.supplier) ...[
               const SizedBox(height: 12),
               FilledButton.icon(
                 key: const ValueKey('open_my_inventory'),
