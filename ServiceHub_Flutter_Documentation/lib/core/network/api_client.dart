@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'api_exception.dart';
@@ -72,19 +73,26 @@ class ApiClient {
       if (token != null) 'Authorization': 'Bearer $token',
     };
 
+    final uri = _uri(path);
+    final requestBody = body == null ? null : jsonEncode(body);
+    _logRequest(method, uri, requestBody);
+
     late final http.Response response;
     try {
       response = await _dispatch(
         method,
-        _uri(path),
+        uri,
         headers,
-        body == null ? null : jsonEncode(body),
+        requestBody,
       ).timeout(_timeout);
+      _logResponse(method, uri, response);
     } on TimeoutException {
+      _logTransportError(method, uri, 'Request timed out');
       throw ApiException(
         message: 'The server took too long to respond. Try again.',
       );
-    } on http.ClientException {
+    } on http.ClientException catch (error) {
+      _logTransportError(method, uri, error.message);
       throw ApiException(
         message:
             'Unable to reach the server. Check your connection and try again.',
@@ -105,6 +113,64 @@ class ApiClient {
       message: 'The server returned an unexpected response.',
       statusCode: response.statusCode,
     );
+  }
+
+  void _logRequest(String method, Uri uri, String? body) {
+    if (!kDebugMode) return;
+    debugPrint('[API] --> $method ${_uriForLog(uri)}');
+    if (body != null) {
+      debugPrint('[API] request body: ${_bodyForLog(body)}');
+    }
+  }
+
+  void _logResponse(String method, Uri uri, http.Response response) {
+    if (!kDebugMode) return;
+    debugPrint('[API] <-- $method ${_uriForLog(uri)} (${response.statusCode})');
+    if (response.body.isNotEmpty) {
+      debugPrint('[API] response body: ${_bodyForLog(response.body)}');
+    }
+  }
+
+  void _logTransportError(String method, Uri uri, String message) {
+    if (kDebugMode) {
+      debugPrint('[API] !! $method ${_uriForLog(uri)}: $message');
+    }
+  }
+
+  String _uriForLog(Uri uri) {
+    return uri.replace(query: uri.hasQuery ? '[REDACTED]' : null).toString();
+  }
+
+  String _bodyForLog(String body) {
+    try {
+      return jsonEncode(_redactSensitive(jsonDecode(body)));
+    } on FormatException {
+      return '<non-JSON body omitted>';
+    }
+  }
+
+  Object? _redactSensitive(Object? value) {
+    if (value is Map) {
+      return value.map(
+        (key, value) => MapEntry(
+          key,
+          key is String && _isSensitiveKey(key)
+              ? '[REDACTED]'
+              : _redactSensitive(value),
+        ),
+      );
+    }
+    if (value is List) {
+      return value.map(_redactSensitive).toList();
+    }
+    return value;
+  }
+
+  bool _isSensitiveKey(String key) {
+    return RegExp(
+      r'password|token|secret|authorization|cookie|api.?key|otp',
+      caseSensitive: false,
+    ).hasMatch(key);
   }
 
   Future<http.Response> _dispatch(
