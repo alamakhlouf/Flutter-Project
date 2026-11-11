@@ -30,7 +30,7 @@ class AppTextStyles {
     bodyLarge: GoogleFonts.inter(
       fontSize: 16,
       fontWeight: AppFonts.regular,
-      color: AppColors.textSecondary,
+      color: AppColors.textPrimary,
     ),
     bodyMedium: GoogleFonts.inter(
       fontSize: 14,
