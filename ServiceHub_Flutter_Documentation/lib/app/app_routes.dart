@@ -9,4 +9,10 @@ class AppRoutes {
   static const adminBlocked = '/admin-blocked';
   static const sessionLoading = '/session-loading';
   static const sessionError = '/session-error';
+
+  static const servicesCatalog = '/services';
+  static const serviceDetails = '/services/details';
+  static const myServices = '/services/my';
+  static const createService = '/services/create';
+  static const editService = '/services/edit';
 }
