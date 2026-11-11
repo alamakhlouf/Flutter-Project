@@ -19,6 +19,10 @@ import '../../services/screens/service_details_screen.dart';
 import '../../services/screens/service_form_screen.dart';
 import '../../services/screens/services_catalog_screen.dart';
 import '../../services/services_keys.dart';
+import '../../bookings/bookings_keys.dart';
+import '../../bookings/screens/booking_details_screen.dart';
+import '../../bookings/screens/booking_list_screen.dart';
+import '../../bookings/screens/create_booking_screen.dart';
 import '../auth_keys.dart';
 import '../auth_scope.dart';
 import '../widgets/auth_widgets.dart';
@@ -134,6 +138,33 @@ class SessionHomeScreen extends StatelessWidget {
               settings: settings,
               builder: (_) => InventoryFormScreen(item: item),
             );
+          case AppRoutes.bookingsList:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const BookingListScreen(),
+            );
+          case AppRoutes.createBooking:
+            final service = settings.arguments is ServiceModel
+                ? settings.arguments as ServiceModel
+                : null;
+            if (service == null) {
+              return MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => const ServicesCatalogScreen(),
+              );
+            }
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => CreateBookingScreen(service: service),
+            );
+          case AppRoutes.bookingDetails:
+            final bookingId = settings.arguments is String
+                ? settings.arguments as String
+                : '';
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => BookingDetailsScreen(bookingId: bookingId),
+            );
           default:
             return _homeRoute();
         }
@@ -208,6 +239,14 @@ class _AccountHome extends StatelessWidget {
               label: const Text('Browse Inventory'),
               onPressed: () =>
                   Navigator.of(context).pushNamed(AppRoutes.inventoryCatalog),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              key: BookingsKeys.openBookings,
+              icon: const Icon(Icons.calendar_month_outlined),
+              label: const Text('My Bookings & Requests'),
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(AppRoutes.bookingsList),
             ),
             if (user.role == UserRole.provider) ...[
               const SizedBox(height: 12),

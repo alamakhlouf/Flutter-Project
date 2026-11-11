@@ -395,11 +395,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               key: ServicesKeys.detailsBookButton,
               onPressed: canBook
                   ? () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Booking request created for ${s.title}!'),
-                          backgroundColor: AppColors.success,
-                        ),
+                      Navigator.of(context).pushNamed(
+                        AppRoutes.createBooking,
+                        arguments: s,
                       );
                     }
                   : (isOwner
