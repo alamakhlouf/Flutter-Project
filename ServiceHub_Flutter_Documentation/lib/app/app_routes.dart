@@ -25,4 +25,9 @@ class AppRoutes {
   static const bookingsList = '/bookings';
   static const createBooking = '/bookings/create';
   static const bookingDetails = '/bookings/details';
+  static const workshops = '/workshops';
+  static const createWorkshop = '/workshops/create';
+  static const editWorkshop = '/workshops/edit';
+  static const myWorkshops = '/workshops/my';
+  static const myWorkshopRegistrations = '/workshops/registrations';
 }

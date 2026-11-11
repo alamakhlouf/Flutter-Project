@@ -23,6 +23,10 @@ import '../../bookings/bookings_keys.dart';
 import '../../bookings/screens/booking_details_screen.dart';
 import '../../bookings/screens/booking_list_screen.dart';
 import '../../bookings/screens/create_booking_screen.dart';
+import '../../workshops/models/workshop_model.dart';
+import '../../workshops/screens/workshop_catalog_screen.dart';
+import '../../workshops/screens/workshop_form_screen.dart';
+import '../../workshops/screens/workshop_management_screen.dart';
 import '../auth_keys.dart';
 import '../auth_scope.dart';
 import '../widgets/auth_widgets.dart';
@@ -165,6 +169,34 @@ class SessionHomeScreen extends StatelessWidget {
               settings: settings,
               builder: (_) => BookingDetailsScreen(bookingId: bookingId),
             );
+          case AppRoutes.workshops:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const WorkshopCatalogScreen(),
+            );
+          case AppRoutes.createWorkshop:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const WorkshopFormScreen(),
+            );
+          case AppRoutes.editWorkshop:
+            final workshop = settings.arguments is WorkshopModel
+                ? settings.arguments as WorkshopModel
+                : null;
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => WorkshopFormScreen(workshop: workshop),
+            );
+          case AppRoutes.myWorkshops:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const WorkshopManagementScreen(),
+            );
+          case AppRoutes.myWorkshopRegistrations:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const WorkshopManagementScreen(registrations: true),
+            );
           default:
             return _homeRoute();
         }
@@ -247,6 +279,36 @@ class _AccountHome extends StatelessWidget {
               label: const Text('My Bookings & Requests'),
               onPressed: () =>
                   Navigator.of(context).pushNamed(AppRoutes.bookingsList),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              icon: const Icon(Icons.school_outlined),
+              label: const Text('Browse Workshops'),
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(AppRoutes.workshops),
+            ),
+            if (user.role == UserRole.provider) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('Create Workshop'),
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.createWorkshop),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.event_note_outlined),
+                label: const Text('Manage My Workshops'),
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.myWorkshops),
+              ),
+            ],
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.how_to_reg_outlined),
+              label: const Text('My Workshop Registrations'),
+              onPressed: () => Navigator.of(context)
+                  .pushNamed(AppRoutes.myWorkshopRegistrations),
             ),
             if (user.role == UserRole.provider) ...[
               const SizedBox(height: 12),
