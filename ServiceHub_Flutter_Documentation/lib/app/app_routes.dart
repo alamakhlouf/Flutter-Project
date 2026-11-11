@@ -15,4 +15,8 @@ class AppRoutes {
   static const myServices = '/services/my';
   static const createService = '/services/create';
   static const editService = '/services/edit';
+
+  static const inventoryList = '/inventory';
+  static const createInventory = '/inventory/create';
+  static const editInventory = '/inventory/edit';
 }

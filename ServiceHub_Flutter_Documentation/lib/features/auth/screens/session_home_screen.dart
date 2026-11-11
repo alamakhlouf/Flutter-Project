@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../app/app_routes.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/models/auth_user.dart';
+import '../../inventory/models/inventory_item_model.dart';
+import '../../inventory/screens/inventory_form_screen.dart';
+import '../../inventory/screens/inventory_list_screen.dart';
 import '../../profile/profile_keys.dart';
 import '../../profile/screens/edit_profile_screen.dart';
 import '../../profile/screens/profile_screen.dart';
@@ -93,6 +96,24 @@ class SessionHomeScreen extends StatelessWidget {
               settings: settings,
               builder: (_) => ServiceFormScreen(service: service),
             );
+          case AppRoutes.inventoryList:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const InventoryListScreen(),
+            );
+          case AppRoutes.createInventory:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const InventoryFormScreen(),
+            );
+          case AppRoutes.editInventory:
+            final item = settings.arguments is InventoryItemModel
+                ? settings.arguments as InventoryItemModel
+                : null;
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => InventoryFormScreen(item: item),
+            );
           default:
             return _homeRoute();
         }
@@ -173,6 +194,18 @@ class _AccountHome extends StatelessWidget {
                 label: const Text('Manage My Services'),
                 onPressed: () =>
                     Navigator.of(context).pushNamed(AppRoutes.myServices),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                key: const ValueKey('open_my_inventory'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.secondary,
+                  foregroundColor: Colors.black,
+                ),
+                icon: const Icon(Icons.inventory_2_outlined),
+                label: const Text('Manage My Inventory'),
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.inventoryList),
               ),
             ],
             const SizedBox(height: 12),
