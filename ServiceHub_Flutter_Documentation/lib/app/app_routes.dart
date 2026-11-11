@@ -21,4 +21,8 @@ class AppRoutes {
   static const editInventory = '/inventory/edit';
   static const inventoryCatalog = '/inventory/catalog';
   static const inventoryDetails = '/inventory/details';
+
+  static const bookingsList = '/bookings';
+  static const createBooking = '/bookings/create';
+  static const bookingDetails = '/bookings/details';
 }
