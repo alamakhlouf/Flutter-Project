@@ -79,8 +79,8 @@ Only providers create workshops. Customers and providers can register for publis
 Only customer owning a COMPLETED booking can review it. One review per booking. Rating 1–5.
 
 ### Report
-`id UUID`, `reporter User`, `targetType`, `targetId UUID`, `reason`, optional `description`, `status`, timestamps.
-Mobile users can submit reports and optionally view their own reports only. They cannot moderate reports. Admin listing/detail/status endpoints are future-backoffice-only and ADMIN-protected.
+`id UUID`, `reporter User`, `targetType`, `targetId UUID`, optional `targetTitle` (Service title, User full name, Workshop title, etc.), `reason`, optional `description`, `status`, timestamps.
+When returning `ReportDTO` (e.g. for `/api/admin/reports`), include `targetTitle` (or `targetName`) and `reporterName` so administrators can immediately see the title of the reported service or full name of the reported profile.
 
 ### Notification
 `id UUID`, `recipient User`, `title`, `message`, `type`, optional `relatedEntityType`, optional `relatedEntityId UUID`, `read`, `createdAt`.
@@ -154,11 +154,13 @@ Create simple notifications from service methods; no message broker.
 - `POST /api/reports`
 - `GET /api/reports/my` (optional; reporter-owned only)
 
-### Future backoffice only
-- `GET /api/admin/reports`
+### Admin & moderation endpoints (ADMIN)
+- `GET /api/admin/reports` (search/status/page/size)
 - `GET /api/admin/reports/{id}`
-- `PATCH /api/admin/reports/{id}/status`
-All `/api/admin/**` routes require ADMIN and must be documented as future web-backoffice endpoints, not Flutter endpoints.
+- `PATCH /api/admin/reports/{id}/status` (UPDATE status to RESOLVED / DISMISSED / PENDING)
+- `PATCH /api/admin/users/{id}/block` (Block reported user account)
+- `DELETE /api/admin/services/{id}` (Delete reported service listing)
+All `/api/admin/**` routes require ADMIN role authorization.
 
 ### Notifications
 - `GET /api/notifications`

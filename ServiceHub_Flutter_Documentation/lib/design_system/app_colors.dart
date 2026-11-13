@@ -4,9 +4,10 @@ class AppColors {
   const AppColors._();
 
   static const primary = Color(0xFF163B60);
-  static const secondary = Color(0xFFE05A36);
+  static const secondary = Color(0xFF347F7B);
   static const tertiary = Color(0xFFF59E0B);
   static const neutral = Color(0xFFF5F3EF);
+  static const navigationSurface = Color(0xFFEDE9E2);
 
   static const success = Color(0xFF287A4B);
   static const warning = Color(0xFFA96608);

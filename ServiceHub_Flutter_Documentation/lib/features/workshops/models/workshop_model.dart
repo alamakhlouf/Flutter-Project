@@ -1,4 +1,5 @@
 import '../../../design_system/app_colors.dart';
+
 import 'package:flutter/material.dart';
 
 enum WorkshopStatus { draft, published, cancelled, completed }
@@ -96,7 +97,8 @@ class WorkshopModel {
     );
   }
 
-  static int _int(Object? value) => value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+  static int _int(Object? value) =>
+      value is num ? value.toInt() : int.tryParse('$value') ?? 0;
 }
 
 class WorkshopRegistration {
@@ -107,6 +109,11 @@ class WorkshopRegistration {
     required this.status,
     required this.registeredAt,
     this.cancelledAt,
+    this.workshopTitle,
+    this.workshopLocation,
+    this.workshopStartDateTime,
+    this.workshopStatus,
+    this.organizerName,
   });
 
   final String id;
@@ -115,6 +122,11 @@ class WorkshopRegistration {
   final String status;
   final DateTime registeredAt;
   final DateTime? cancelledAt;
+  final String? workshopTitle;
+  final String? workshopLocation;
+  final DateTime? workshopStartDateTime;
+  final String? workshopStatus;
+  final String? organizerName;
 
   bool get isActive => status == 'REGISTERED';
 
@@ -135,6 +147,13 @@ class WorkshopRegistration {
       cancelledAt: json['cancelledAt'] == null
           ? null
           : DateTime.tryParse('${json['cancelledAt']}'),
+      workshopTitle: json['workshopTitle']?.toString(),
+      workshopLocation: json['workshopLocation']?.toString(),
+      workshopStartDateTime: json['workshopStartDateTime'] == null
+          ? null
+          : DateTime.tryParse('${json['workshopStartDateTime']}'),
+      workshopStatus: json['workshopStatus']?.toString(),
+      organizerName: json['organizerName']?.toString(),
     );
   }
 }

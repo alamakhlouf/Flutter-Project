@@ -15,14 +15,14 @@ enum UserRole {
     UserRole.supplier,
   ];
 
-  bool get canUseMobile => this != UserRole.admin;
+  bool get canUseMobile => true;
 
   String get description => switch (this) {
     UserRole.customer => 'Book services, order products, and join workshops.',
     UserRole.provider =>
       'Offer services, manage inventory, and host workshops.',
     UserRole.supplier => 'List products and fulfill customer orders.',
-    UserRole.admin => 'Web backoffice only.',
+    UserRole.admin => 'Administrative moderation and system review.',
   };
 
   static UserRole parse(String raw) {
@@ -41,6 +41,7 @@ class AuthUser {
     required this.role,
     this.phone,
     this.profileImageUrl,
+    this.blocked = false,
   });
 
   final String id;
@@ -49,6 +50,7 @@ class AuthUser {
   final UserRole role;
   final String? phone;
   final String? profileImageUrl;
+  final bool blocked;
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     final id = json['id'];
@@ -69,6 +71,7 @@ class AuthUser {
       role: UserRole.parse(role),
       phone: _optionalString(json['phone']),
       profileImageUrl: _optionalString(json['profileImageUrl']),
+      blocked: json['blocked'] is bool ? json['blocked'] as bool : false,
     );
   }
 
@@ -86,10 +89,11 @@ class AuthUser {
         other.email == email &&
         other.role == role &&
         other.phone == phone &&
-        other.profileImageUrl == profileImageUrl;
+        other.profileImageUrl == profileImageUrl &&
+        other.blocked == blocked;
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, fullName, email, role, phone, profileImageUrl);
+      Object.hash(id, fullName, email, role, phone, profileImageUrl, blocked);
 }

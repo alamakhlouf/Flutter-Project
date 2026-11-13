@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/app_routes.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
 import '../../auth/models/auth_user.dart';
+import '../../reports/models/report_target.dart';
 import '../models/inventory_product_model.dart';
 import '../services/inventory_product_service.dart';
 
@@ -81,15 +83,15 @@ class _InventoryDetailsScreenState extends State<InventoryDetailsScreen> {
   Future<void> _buy() async {
     final product = _product;
     if (product == null) return;
-    final controller = TextEditingController(text: '1');
+    var enteredQuantity = '1';
     final quantity = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Buy ${product.name}'),
         content: TextField(
-          controller: controller,
           autofocus: true,
           keyboardType: TextInputType.number,
+          onChanged: (value) => enteredQuantity = value,
           decoration: const InputDecoration(labelText: 'Quantity'),
         ),
         actions: [
@@ -99,7 +101,7 @@ class _InventoryDetailsScreenState extends State<InventoryDetailsScreen> {
           ),
           FilledButton(
             onPressed: () {
-              final parsed = int.tryParse(controller.text.trim());
+              final parsed = int.tryParse(enteredQuantity.trim());
               if (parsed == null ||
                   parsed < 1 ||
                   (product.quantityAvailable != null &&
@@ -113,17 +115,13 @@ class _InventoryDetailsScreenState extends State<InventoryDetailsScreen> {
         ],
       ),
     );
-    controller.dispose();
     if (quantity == null || !mounted) return;
 
     setState(() => _buying = true);
     try {
       await _service.buyProduct(product.id, quantity);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Order placed successfully.')),
-      );
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(true);
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() => _buying = false);
@@ -138,7 +136,6 @@ class _InventoryDetailsScreenState extends State<InventoryDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canBuy = AuthScope.of(context).user.role == UserRole.customer;
     final product = _product;
     return Scaffold(
       appBar: AppBar(title: const Text('Inventory Details')),
@@ -153,84 +150,326 @@ class _InventoryDetailsScreenState extends State<InventoryDetailsScreen> {
             )
           : product == null
           ? const Center(child: Text('Inventory item not found.'))
-          : _buildDetails(context, product, canBuy),
+          : _buildDetails(context, product),
     );
   }
 
-  Widget _buildDetails(
-    BuildContext context,
-    InventoryProduct product,
-    bool canBuy,
-  ) {
+  Widget _buildDetails(BuildContext context, InventoryProduct product) {
     final theme = Theme.of(context);
+    final user = AuthScope.of(context).user;
+    final isAdmin = user.role == UserRole.admin;
+
     final outOfStock =
         product.quantityAvailable != null && product.quantityAvailable! <= 0;
+    final status = !product.available
+        ? 'Unavailable'
+        : outOfStock
+        ? 'Out of stock'
+        : product.quantityAvailable == null
+        ? 'Available'
+        : product.quantityAvailable! < 5
+        ? 'Low stock'
+        : 'In stock';
+    final statusColor = !product.available
+        ? AppColors.textSecondary
+        : outOfStock
+        ? AppColors.error
+        : product.quantityAvailable != null && product.quantityAvailable! < 5
+        ? AppColors.warning
+        : AppColors.success;
+    final imageUrl = product.imageUrl?.trim();
+    final imageUri = imageUrl == null ? null : Uri.tryParse(imageUrl);
+    final validImageUrl =
+        imageUri != null &&
+        (imageUri.scheme == 'http' || imageUri.scheme == 'https') &&
+        imageUri.host.isNotEmpty;
+
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        if (product.imageUrl != null && product.imageUrl!.isNotEmpty) ...[
-          ClipRRect(
+        Card(
+          margin: EdgeInsets.zero,
+          color: AppColors.surface,
+          elevation: 1,
+          shadowColor: AppColors.primary.withValues(alpha: 0.08),
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            child: Image.network(
-              product.imageUrl!,
-              height: 240,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const SizedBox(
-                height: 120,
-                child: Center(child: Icon(Icons.broken_image_outlined)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 190,
+                width: double.infinity,
+                child: validImageUrl
+                    ? Image.network(
+                        imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _imagePlaceholder(),
+                      )
+                    : _imagePlaceholder(),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product.category.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        _StatusBadge(label: status, color: statusColor),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      product.name,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Sold by ${product.supplierName}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Price',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '\$${product.price.toStringAsFixed(2)}',
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        isAdmin ? SizedBox.shrink() : Flexible(
+                          child: FilledButton.icon(
+                            onPressed:
+                                !isAdmin && product.available && !outOfStock && !_buying
+                                ? _buy
+                                : null,
+                            icon: _buying
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.shopping_bag_outlined),
+                            label: Text(
+                               !product.available
+                                  ? 'Unavailable'
+                                  : outOfStock
+                                  ? 'Out of stock'
+                                  : 'Buy',
+                              style: TextStyle(
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (product.quantityAvailable != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        '${product.quantityAvailable} available',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (product.description?.isNotEmpty == true) ...[
+          const SizedBox(height: 16),
+          Card(
+            margin: EdgeInsets.zero,
+            color: AppColors.surface,
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Description',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    product.description!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.55,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 24),
         ],
-        Text(product.name, style: theme.textTheme.headlineMedium),
-        const SizedBox(height: 8),
-        Text(
-          product.category,
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: AppColors.textSecondary,
+        const SizedBox(height: 16),
+        Card(
+          margin: EdgeInsets.zero,
+          color: AppColors.surface,
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Supplier Information',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const CircleAvatar(
+                      backgroundColor: AppColors.neutral,
+                      foregroundColor: AppColors.primary,
+                      child: Icon(Icons.storefront_outlined),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        product.supplierName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (!isAdmin) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).pushNamed(
+                          AppRoutes.createReport,
+                          arguments: ReportTarget(
+                            type: 'PRODUCT',
+                            id: product.id,
+                            title: 'Report product',
+                            subtitle: product.name,
+                          ),
+                        ),
+                        icon: const Icon(Icons.flag_outlined),
+                        label: const Text('Report product'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).pushNamed(
+                          AppRoutes.createReport,
+                          arguments: ReportTarget(
+                            type: 'SUPPLIER',
+                            id: product.supplierId,
+                            title: 'Report supplier',
+                            subtitle: product.supplierName,
+                          ),
+                        ),
+                        icon: const Icon(Icons.storefront_outlined),
+                        label: const Text('Report supplier'),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 20),
-        Text(
-          '${product.price.toStringAsFixed(2)} DZD',
-          style: theme.textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 12),
-        Text(
-          outOfStock
-              ? 'Out of stock'
-              : product.quantityAvailable == null
-              ? 'Available'
-              : '${product.quantityAvailable} available',
-        ),
-        const SizedBox(height: 8),
-        Text('Sold by ${product.supplierName}'),
-        if (product.description?.isNotEmpty == true) ...[
-          const SizedBox(height: 24),
-          Text('Description', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text(product.description!),
-        ],
-        if (canBuy) ...[
-          const SizedBox(height: 32),
-          FilledButton.icon(
-            onPressed: product.available && !outOfStock && !_buying
-                ? _buy
-                : null,
-            icon: _buying
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.shopping_bag_outlined),
-            label: Text(outOfStock ? 'Out of stock' : 'Buy'),
-          ),
-        ],
       ],
     );
   }
 
+  Widget _imagePlaceholder() {
+    return ColoredBox(
+      color: AppColors.surface,
+      child: Center(
+        child: Icon(
+          Icons.inventory_2_outlined,
+          size: 52,
+          color: AppColors.primary.withValues(alpha: 0.28),
+        ),
+      ),
+    );
+  }
+
   InventoryProductService get _service => _productService!;
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall
+            ?.copyWith(color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
 }

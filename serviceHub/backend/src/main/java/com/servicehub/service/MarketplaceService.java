@@ -176,7 +176,7 @@ public class MarketplaceService {
     }
 
     @Transactional public OrderDto createOrder(OrderRequest r) {
-        User customer=actor(Role.CUSTOMER); Map<UUID,Integer> quantities=new LinkedHashMap<>();
+        User customer=current.get(); Map<UUID,Integer> quantities=new LinkedHashMap<>();
         for (OrderLineRequest line:r.items()) quantities.merge(line.productId(),line.quantity(),Integer::sum);
         List<SupplierProduct> selected=new ArrayList<>();
         quantities.keySet().stream().sorted(Comparator.comparing(UUID::toString))
@@ -193,12 +193,12 @@ public class MarketplaceService {
             OrderItem item=new OrderItem(); item.setOrder(order); item.setProduct(p); item.setProductNameSnapshot(p.getName());
             item.setUnitPriceSnapshot(p.getPrice()); item.setQuantity(q); item.setLineTotal(lineTotal); order.getItems().add(item);
         }
-        order.setTotalAmount(total); orders.save(order); notify(order.getSupplier(),"New product order","A customer submitted an order","ORDER","Order",order.getId());
+        order.setTotalAmount(total); orders.save(order); notify(order.getSupplier(),"New product order","A buyer submitted an order","ORDER","Order",order.getId());
         return DtoMapper.order(order);
     }
     public List<OrderDto> myOrders() {
-        User u=current.get(); List<ProductOrder> list=u.getRole()==Role.CUSTOMER?orders.findByCustomerId(u.getId()):u.getRole()==Role.SUPPLIER?orders.findBySupplierId(u.getId()):null;
-        if (list==null) throw ApiException.forbidden(); return list.stream().map(DtoMapper::order).toList();
+        User u=current.get();
+        return orders.findByCustomerIdOrSupplierId(u.getId(),u.getId()).stream().map(DtoMapper::order).toList();
     }
     public OrderDto order(UUID id) {
         ProductOrder o=require(orders.findById(id),"Order"); User u=current.get();
@@ -212,7 +212,7 @@ public class MarketplaceService {
         notify(o.getCustomer(),"Order updated","Your order is now " + status,"ORDER","Order",o.getId()); return DtoMapper.order(o);
     }
     @Transactional public OrderDto cancelOrder(UUID id) {
-        ProductOrder o=require(orders.findById(id),"Order"); owner(o.getCustomer(),actor(Role.CUSTOMER));
+        ProductOrder o=require(orders.findById(id),"Order"); owner(o.getCustomer(),current.get());
         if (!orderTransition(o.getStatus(),OrderStatus.CANCELLED)) throw ApiException.invalid("Order cannot be cancelled in its current state");
         o.setStatus(OrderStatus.CANCELLED); restoreStock(o); return DtoMapper.order(o);
     }
@@ -260,7 +260,7 @@ public class MarketplaceService {
     public List<WorkshopDto> organized() {
         User u=actor(Role.PROVIDER); return workshops.findByOrganizerId(u.getId()).stream().map(this::workshopDto).toList();
     }
-    public List<RegistrationDto> myRegistrations() { return registrations.findByParticipantId(current.get().getId()).stream().map(DtoMapper::registration).toList(); }
+    @Transactional(readOnly = true) public List<RegistrationDto> myRegistrations() { return registrations.findByParticipantId(current.get().getId()).stream().map(DtoMapper::registration).toList(); }
     public List<UserDto> participants(UUID id) {
         Workshop w=require(workshops.findById(id),"Workshop"); owner(w.getOrganizer(),actor(Role.PROVIDER));
         return registrations.findByWorkshopIdAndStatus(id,WorkshopRegistrationStatus.REGISTERED).stream().map(x->DtoMapper.user(x.getParticipant())).toList();
@@ -308,16 +308,50 @@ public class MarketplaceService {
     }
     public List<ReviewDto> serviceReviews(UUID id) { return reviews.findByServiceId(id).stream().map(DtoMapper::review).toList(); }
     public List<ReviewDto> providerReviews(UUID id) { return reviews.findByProviderId(id).stream().map(DtoMapper::review).toList(); }
+
+    private String resolveTargetTitle(String targetType, UUID targetId) {
+        if (targetType == null || targetId == null) return null;
+        String type = targetType.toUpperCase();
+        try {
+            if ("SERVICE".equals(type)) {
+                return services.findById(targetId).map(ServiceListing::getTitle).orElse(null);
+            } else if ("USER".equals(type) || "PROFILE".equals(type) || "PROVIDER".equals(type) || "SUPPLIER".equals(type) || "CUSTOMER".equals(type)) {
+                return users.findById(targetId).map(User::getFullName).orElse(null);
+            } else if ("WORKSHOP".equals(type)) {
+                return workshops.findById(targetId).map(Workshop::getTitle).orElse(null);
+            } else if ("PRODUCT".equals(type)) {
+                return products.findById(targetId).map(SupplierProduct::getName).orElse(null);
+            }
+        } catch (Exception ignored) { }
+        return null;
+    }
+
     @Transactional public ReportDto createReport(ReportRequest r) {
         Report report=new Report();report.setReporter(current.get());report.setTargetType(r.targetType().trim().toUpperCase());
-        report.setTargetId(r.targetId());report.setReason(r.reason().trim());report.setDescription(r.description());return DtoMapper.report(reports.save(report));
+        report.setTargetId(r.targetId());report.setReason(r.reason().trim());report.setDescription(r.description());
+        Report saved = reports.save(report);
+        return DtoMapper.report(saved, resolveTargetTitle(saved.getTargetType(), saved.getTargetId()));
     }
-    public List<ReportDto> myReports() { return reports.findByReporterId(current.get().getId()).stream().map(DtoMapper::report).toList(); }
-    public List<ReportDto> adminReports() { actor(Role.ADMIN); return reports.findAll().stream().map(DtoMapper::report).toList(); }
-    public ReportDto adminReport(UUID id) { actor(Role.ADMIN); return DtoMapper.report(require(reports.findById(id),"Report")); }
+    public List<ReportDto> myReports() { return reports.findByReporterId(current.get().getId()).stream().map(r -> DtoMapper.report(r, resolveTargetTitle(r.getTargetType(), r.getTargetId()))).toList(); }
+    public List<ReportDto> adminReports() { actor(Role.ADMIN); return reports.findAll().stream().map(r -> DtoMapper.report(r, resolveTargetTitle(r.getTargetType(), r.getTargetId()))).toList(); }
+    public ReportDto adminReport(UUID id) { actor(Role.ADMIN); Report r = require(reports.findById(id),"Report"); return DtoMapper.report(r, resolveTargetTitle(r.getTargetType(), r.getTargetId())); }
     @Transactional public ReportDto adminReportStatus(UUID id,ReportStatus status) {
-        actor(Role.ADMIN); Report r=require(reports.findById(id),"Report");r.setStatus(status);return DtoMapper.report(r);
+        actor(Role.ADMIN); Report r=require(reports.findById(id),"Report");r.setStatus(status);return DtoMapper.report(r, resolveTargetTitle(r.getTargetType(), r.getTargetId()));
     }
+
+    @Transactional public UserDto adminBlockUser(UUID userId) {
+        actor(Role.ADMIN);
+        User u = require(users.findById(userId), "User");
+        u.setBlocked(true);
+        return DtoMapper.user(u);
+    }
+
+    @Transactional public void adminDeleteService(UUID serviceId) {
+        actor(Role.ADMIN);
+        ServiceListing s = require(services.findById(serviceId), "Service");
+        s.setActive(false);
+    }
+
     public List<NotificationDto> myNotifications() {
         return notifications.findByRecipientIdOrderByCreatedAtDesc(current.get().getId()).stream().map(DtoMapper::notification).toList();
     }

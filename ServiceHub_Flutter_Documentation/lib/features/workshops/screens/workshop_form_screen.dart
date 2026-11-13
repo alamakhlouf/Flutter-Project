@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../auth/auth_scope.dart';
 import '../models/workshop_model.dart';
 import '../services/workshop_service.dart';
+import '../utils/workshop_date_format.dart';
 
 class WorkshopFormScreen extends StatefulWidget {
   const WorkshopFormScreen({super.key, this.workshop});
@@ -18,7 +19,8 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
       _description,
       _category,
       _location,
-      _capacity;
+      _capacity,
+      _coverImageUrl;
   DateTime _start = DateTime.now().add(const Duration(days: 1));
   DateTime _end = DateTime.now().add(const Duration(days: 1, hours: 2));
   DateTime _deadline = DateTime.now().add(const Duration(hours: 12));
@@ -33,6 +35,7 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
     _category = TextEditingController(text: w?.category);
     _location = TextEditingController(text: w?.location);
     _capacity = TextEditingController(text: w?.capacity.toString() ?? '10');
+    _coverImageUrl = TextEditingController(text: w?.coverImageUrl ?? '');
     if (w != null) {
       _start = w.startDateTime;
       _end = w.endDateTime;
@@ -76,6 +79,7 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
           title: args.title,
           description: args.description,
           category: args.category,
+          coverImageUrl: _coverImageUrl.text,
           location: args.location,
           capacity: args.capacity,
           startDateTime: args.start,
@@ -88,6 +92,7 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
           title: args.title,
           description: args.description,
           category: args.category,
+          coverImageUrl: _coverImageUrl.text,
           location: args.location,
           capacity: args.capacity,
           startDateTime: args.start,
@@ -127,6 +132,30 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
             _field(_capacity, 'Capacity', keyboard: TextInputType.number),
           ])
             Padding(padding: const EdgeInsets.only(bottom: 16), child: field),
+          TextFormField(
+            controller: _coverImageUrl,
+            keyboardType: TextInputType.url,
+            textCapitalization: TextCapitalization.none,
+            decoration: const InputDecoration(
+              labelText: 'Cover image URL (optional)',
+              hintText: 'https://example.com/workshop.jpg',
+            ),
+            validator: (value) {
+              final url = value?.trim() ?? '';
+              if (url.isEmpty) return null;
+              if (url.length > 2048) {
+                return 'Image URL must be 2048 characters or fewer.';
+              }
+              final uri = Uri.tryParse(url);
+              if (uri == null ||
+                  (uri.scheme != 'http' && uri.scheme != 'https') ||
+                  uri.host.isEmpty) {
+                return 'Enter a valid http or https image URL.';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
           _dateButton(
             'Starts',
             _start,
@@ -169,7 +198,7 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
     ValueChanged<DateTime> onChanged,
   ) => ListTile(
     title: Text(label),
-    subtitle: Text(value.toLocal().toString().split('.').first),
+    subtitle: Text(formatWorkshopDateTime(value)),
     trailing: const Icon(Icons.edit_calendar),
     onTap: () async {
       final date = await showDatePicker(
@@ -193,7 +222,14 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
 
   @override
   void dispose() {
-    for (final c in [_title, _description, _category, _location, _capacity]) {
+    for (final c in [
+      _title,
+      _description,
+      _category,
+      _location,
+      _capacity,
+      _coverImageUrl,
+    ]) {
       c.dispose();
     }
     super.dispose();

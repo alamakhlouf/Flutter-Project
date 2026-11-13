@@ -2,24 +2,33 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_routes.dart';
 import '../../../design_system/app_colors.dart';
+import '../auth_scope.dart';
 import '../../auth/models/auth_user.dart';
 import '../../inventory/models/inventory_product_model.dart';
 import '../../inventory/models/inventory_item_model.dart';
 import '../../inventory/screens/inventory_form_screen.dart';
 import '../../inventory/screens/inventory_catalog_screen.dart';
 import '../../inventory/screens/inventory_details_screen.dart';
+import '../../inventory/screens/inventory_list_screen.dart';
 import '../../inventory/screens/supplier_inventory_screen.dart';
-import '../../profile/profile_keys.dart';
+import '../../inventory/models/product_order_model.dart';
+import '../../inventory/screens/product_orders_screen.dart';
+import '../../inventory/services/product_order_service.dart';
+import '../../bookings/models/booking_model.dart';
 import '../../profile/screens/edit_profile_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../profile/screens/my_activity_screen.dart';
 import '../../profile/services/profile_service.dart';
+import '../../reports/models/report_target.dart';
+import '../../reports/screens/admin_reports_screen.dart';
+import '../../reports/screens/my_reports_screen.dart';
+import '../../reports/screens/report_form_screen.dart';
+import '../../reviews/screens/review_form_screen.dart';
 import '../../services/models/service_model.dart';
 import '../../services/screens/my_services_screen.dart';
 import '../../services/screens/service_details_screen.dart';
 import '../../services/screens/service_form_screen.dart';
 import '../../services/screens/services_catalog_screen.dart';
-import '../../services/services_keys.dart';
-import '../../bookings/bookings_keys.dart';
 import '../../bookings/screens/booking_details_screen.dart';
 import '../../bookings/screens/booking_list_screen.dart';
 import '../../bookings/screens/create_booking_screen.dart';
@@ -27,9 +36,6 @@ import '../../workshops/models/workshop_model.dart';
 import '../../workshops/screens/workshop_catalog_screen.dart';
 import '../../workshops/screens/workshop_form_screen.dart';
 import '../../workshops/screens/workshop_management_screen.dart';
-import '../auth_keys.dart';
-import '../auth_scope.dart';
-import '../widgets/auth_widgets.dart';
 
 class SessionHomeScreen extends StatelessWidget {
   const SessionHomeScreen({super.key});
@@ -53,6 +59,35 @@ class SessionHomeScreen extends StatelessWidget {
               settings: settings,
               builder: (_) => const ProfileScreen(),
             );
+          case AppRoutes.myActivity:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const MyActivityScreen(),
+            );
+          case AppRoutes.adminReports:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const AdminReportsScreen(),
+            );
+          case AppRoutes.productOrders:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const ProductOrdersScreen(),
+            );
+          case AppRoutes.productOrderDetails:
+            final order = settings.arguments;
+            if (order is! ProductOrderModel) return _homeRoute();
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => ProductOrderDetailsScreen(
+                order: order,
+                isSupplier:
+                    AuthScope.of(context).user.role == UserRole.supplier,
+                orderService: ProductOrderService(
+                  api: AuthScope.of(context).api,
+                ),
+              ),
+            );
           case AppRoutes.editProfile:
             final args = settings.arguments;
             if (args is Map<String, dynamic> &&
@@ -69,6 +104,35 @@ class SessionHomeScreen extends StatelessWidget {
             return MaterialPageRoute<void>(
               settings: settings,
               builder: (_) => const ProfileScreen(),
+            );
+          case AppRoutes.myReports:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const MyReportsScreen(),
+            );
+          case AppRoutes.createReport:
+            if (AuthScope.of(context).user.role == UserRole.admin) {
+              return _homeRoute();
+            }
+            final target = settings.arguments is ReportTarget
+                ? settings.arguments as ReportTarget
+                : null;
+            if (target == null) return _homeRoute();
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => ReportFormScreen(target: target),
+            );
+          case AppRoutes.createReview:
+            final booking = settings.arguments;
+            if (booking is! BookingModel ||
+                AuthScope.of(context).user.role != UserRole.customer ||
+                AuthScope.of(context).user.id != booking.customerId ||
+                booking.status != BookingStatus.completed) {
+              return _homeRoute();
+            }
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => ReviewFormScreen(booking: booking),
             );
           case AppRoutes.servicesCatalog:
             return MaterialPageRoute<void>(
@@ -108,7 +172,11 @@ class SessionHomeScreen extends StatelessWidget {
           case AppRoutes.inventoryList:
             return MaterialPageRoute<void>(
               settings: settings,
-              builder: (_) => const SupplierInventoryScreen(),
+              builder: (context) => switch (AuthScope.of(context).user.role) {
+                UserRole.provider => const InventoryListScreen(),
+                UserRole.supplier => const SupplierInventoryScreen(),
+                _ => const InventoryCatalogScreen(),
+              },
             );
           case AppRoutes.inventoryCatalog:
             return MaterialPageRoute<void>(
@@ -195,7 +263,8 @@ class SessionHomeScreen extends StatelessWidget {
           case AppRoutes.myWorkshopRegistrations:
             return MaterialPageRoute<void>(
               settings: settings,
-              builder: (_) => const WorkshopManagementScreen(registrations: true),
+              builder: (_) =>
+                  const WorkshopManagementScreen(registrations: true),
             );
           default:
             return _homeRoute();
@@ -205,157 +274,137 @@ class SessionHomeScreen extends StatelessWidget {
   }
 }
 
-class _AccountHome extends StatelessWidget {
+class _AccountHome extends StatefulWidget {
   const _AccountHome();
 
   @override
-  Widget build(BuildContext context) {
-    final scope = AuthScope.of(context);
-    final user = scope.user;
-    final theme = Theme.of(context);
+  State<_AccountHome> createState() => _AccountHomeState();
+}
 
+class _AccountHomeState extends State<_AccountHome> {
+  int _selectedIndex = 0;
+  final List<Widget?> _pages = [
+    const ServicesCatalogScreen(),
+    null,
+    null,
+    null,
+  ];
+
+  void _selectPage(int index) {
+    setState(() {
+      _selectedIndex = index;
+      _pages[index] ??= switch (index) {
+        1 => const InventoryCatalogScreen(),
+        2 => const WorkshopCatalogScreen(),
+        3 => const ProfileScreen(),
+        _ => const ServicesCatalogScreen(),
+      };
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       key: const ValueKey(AppRoutes.home),
-      appBar: AppBar(title: const Text('ServiceHub')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Text(
-              'Hello, ${user.fullName}',
-              style: theme.textTheme.headlineLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'You are signed in to ServiceHub.',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: AppColors.textSecondary,
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          for (var index = 0; index < _pages.length; index++)
+            _pages[index] ?? const SizedBox.shrink(),
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          key: const ValueKey('bottom_navigation_bar'),
+          height: 68,
+          decoration: const BoxDecoration(
+            color: AppColors.navigationSurface,
+            border: Border(top: BorderSide(color: AppColors.border)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            children: [
+              _buildNavigationDestination(
+                index: 0,
+                key: const ValueKey('bottom_nav_services'),
+                icon: Icons.home_repair_service_outlined,
+                selectedIcon: Icons.home_repair_service,
+                label: 'Services',
               ),
-            ),
-            const SizedBox(height: 24),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
+              _buildNavigationDestination(
+                index: 1,
+                key: const ValueKey('bottom_nav_supplier'),
+                icon: Icons.inventory_2_outlined,
+                selectedIcon: Icons.inventory_2,
+                label: 'Supplier',
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Account', style: theme.textTheme.headlineMedium),
-                    const SizedBox(height: 16),
-                    Text('Email', style: theme.textTheme.labelMedium),
-                    const SizedBox(height: 4),
-                    Text(user.email, style: theme.textTheme.bodyLarge),
-                    const SizedBox(height: 16),
-                    Text('Role', style: theme.textTheme.labelMedium),
-                    const SizedBox(height: 4),
-                    Text(user.role.label, style: theme.textTheme.titleLarge),
-                  ],
-                ),
+              _buildNavigationDestination(
+                index: 2,
+                key: const ValueKey('bottom_nav_workshops'),
+                icon: Icons.school_outlined,
+                selectedIcon: Icons.school,
+                label: 'Workshops',
               ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              key: ServicesKeys.openCatalog,
-              icon: const Icon(Icons.explore_outlined),
-              label: const Text('Browse Services Catalog'),
-              onPressed: () =>
-                  Navigator.of(context).pushNamed(AppRoutes.servicesCatalog),
-            ),
-            FilledButton.icon(
-              key: const ValueKey('open_inventory_catalog'),
-              icon: const Icon(Icons.inventory_2_outlined),
-              label: const Text('Browse Inventory'),
-              onPressed: () =>
-                  Navigator.of(context).pushNamed(AppRoutes.inventoryCatalog),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              key: BookingsKeys.openBookings,
-              icon: const Icon(Icons.calendar_month_outlined),
-              label: const Text('My Bookings & Requests'),
-              onPressed: () =>
-                  Navigator.of(context).pushNamed(AppRoutes.bookingsList),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              icon: const Icon(Icons.school_outlined),
-              label: const Text('Browse Workshops'),
-              onPressed: () =>
-                  Navigator.of(context).pushNamed(AppRoutes.workshops),
-            ),
-            if (user.role == UserRole.provider) ...[
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.add_circle_outline),
-                label: const Text('Create Workshop'),
-                onPressed: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.createWorkshop),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.event_note_outlined),
-                label: const Text('Manage My Workshops'),
-                onPressed: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.myWorkshops),
+              _buildNavigationDestination(
+                index: 3,
+                key: const ValueKey('bottom_nav_profile'),
+                icon: Icons.person_outline,
+                selectedIcon: Icons.person,
+                label: 'Profile',
               ),
             ],
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.how_to_reg_outlined),
-              label: const Text('My Workshop Registrations'),
-              onPressed: () => Navigator.of(context)
-                  .pushNamed(AppRoutes.myWorkshopRegistrations),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationDestination({
+    required int index,
+    required Key key,
+    required IconData icon,
+    required IconData selectedIcon,
+    required String label,
+  }) {
+    final isSelected = _selectedIndex == index;
+    final foregroundColor = isSelected
+        ? AppColors.primary
+        : AppColors.textSecondary;
+
+    return Expanded(
+      child: Semantics(
+        selected: isSelected,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => _selectPage(index),
+          child: Container(
+            key: key,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
             ),
-            if (user.role == UserRole.provider) ...[
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                key: ServicesKeys.openMyServices,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.surface,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isSelected ? selectedIcon : icon,
+                  size: 22,
+                  color: foregroundColor,
                 ),
-                icon: const Icon(Icons.home_repair_service_outlined),
-                label: const Text('Manage My Services'),
-                onPressed: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.myServices),
-              ),
-            ],
-            if (user.role == UserRole.supplier) ...[
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                key: const ValueKey('open_my_inventory'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.secondary,
-                  foregroundColor: Colors.black,
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: foregroundColor,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  ),
                 ),
-                icon: const Icon(Icons.inventory_2_outlined),
-                label: const Text('Manage My Inventory'),
-                onPressed: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.inventoryList),
-              ),
-            ],
-            const SizedBox(height: 12),
-            OutlinedButton(
-              key: ProfileKeys.open,
-              onPressed: () =>
-                  Navigator.of(context).pushNamed(AppRoutes.profile),
-              child: const Text('My profile'),
+              ],
             ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              key: AuthKeys.logout,
-              onPressed: () async {
-                final confirmed = await confirmLogout(context);
-                if (!confirmed || !context.mounted) return;
-                await scope.logout();
-              },
-              child: const Text('Log out'),
-            ),
-          ],
+          ),
         ),
       ),
     );

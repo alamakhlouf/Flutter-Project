@@ -4,6 +4,7 @@ import '../../../app/app_routes.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
+import '../../auth/models/auth_user.dart';
 import '../models/service_model.dart';
 import '../services/services_service.dart';
 import '../services_keys.dart';
@@ -23,6 +24,7 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
   late final TextEditingController _searchController;
 
   var _loading = true;
+  var _initialized = false;
   String? _error;
   List<ServiceModel> _services = <ServiceModel>[];
 
@@ -39,7 +41,10 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _service = widget.servicesService ??
+    if (_initialized) return;
+    _initialized = true;
+    _service =
+        widget.servicesService ??
         ServicesService(api: AuthScope.of(context).api);
     if (_loading && _services.isEmpty && _error == null) {
       _loadCatalog();
@@ -85,7 +90,8 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'Unable to load services. Check your connection and try again.';
+        _error =
+            'Unable to load services. Check your connection and try again.';
       });
     }
   }
@@ -114,17 +120,29 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
   }
 
   bool get _hasActiveFilters =>
-      _category != 'All' || _maxPrice != null || (_location != null && _location!.isNotEmpty);
+      _category != 'All' ||
+      _maxPrice != null ||
+      (_location != null && _location!.isNotEmpty);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final categories = ['All', ...ServiceCategory.all];
+    final isProvider = AuthScope.of(context).user.role == UserRole.provider;
 
     return Scaffold(
+      backgroundColor: AppColors.neutral,
       appBar: AppBar(
         title: const Text('Services Catalog'),
         actions: [
+          if (isProvider)
+            IconButton(
+              key: ServicesKeys.openMyServices,
+              tooltip: 'My Services',
+              icon: const Icon(Icons.manage_accounts_outlined),
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(AppRoutes.myServices),
+            ),
           Stack(
             alignment: Alignment.center,
             children: [
@@ -151,6 +169,14 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
           ),
         ],
       ),
+      floatingActionButton: isProvider
+          ? FloatingActionButton.extended(
+              icon: const Icon(Icons.add),
+              label: const Text('Create service'),
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(AppRoutes.createService),
+            )
+          : null,
       body: Column(
         children: [
           Padding(
@@ -162,7 +188,10 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
               onSubmitted: (_) => _loadCatalog(),
               decoration: InputDecoration(
                 hintText: 'Search services by title or description...',
-                prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: AppColors.textSecondary,
+                ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, size: 20),
@@ -206,9 +235,7 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
 
   Widget _buildBody(ThemeData theme) {
     if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_error != null) {
@@ -218,11 +245,7 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.error_outline,
-                size: 48,
-                color: AppColors.error,
-              ),
+              const Icon(Icons.error_outline, size: 48, color: AppColors.error),
               const SizedBox(height: 12),
               Text(
                 'Failed to load services',
@@ -303,10 +326,8 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
         return ServiceCard(
           service: service,
           onTap: () {
-            Navigator.of(context).pushNamed(
-              AppRoutes.serviceDetails,
-              arguments: service,
-            );
+            Navigator.of(context)
+                .pushNamed(AppRoutes.serviceDetails, arguments: service);
           },
         );
       },

@@ -9,17 +9,31 @@ class BrandMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 64,
-      height: 64,
+      width: 72,
+      height: 72,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: AppColors.primary,
-        shape: BoxShape.circle,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary,
+            AppColors.primary.withOpacity(0.85),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.22),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: const Icon(
-        Icons.home_repair_service_outlined,
+        Icons.home_repair_service_rounded,
         color: AppColors.surface,
-        size: 32,
+        size: 36,
       ),
     );
   }
@@ -41,6 +55,7 @@ class AuthScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: AppColors.neutral,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -51,34 +66,43 @@ class AuthScaffold extends StatelessWidget {
               child: Column(
                 children: [
                   const BrandMark(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   Semantics(
                     header: true,
                     child: Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineLarge,
+                      style: theme.textTheme.headlineLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     subtitle,
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyLarge?.copyWith(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,
+                      height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  DecoratedBox(
+                  const SizedBox(height: 28),
+                  Container(
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(24),
                       border: Border.all(color: AppColors.border),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.04),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: child,
-                    ),
+                    padding: const EdgeInsets.all(24),
+                    child: child,
                   ),
                 ],
               ),
@@ -99,27 +123,39 @@ class AuthErrorBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       liveRegion: true,
-      child: DecoratedBox(
+      child: Container(
         decoration: BoxDecoration(
-          color: const Color(0x14C43D35),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.error),
+          color: AppColors.error.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.error.withOpacity(0.3)),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.error_outline, color: AppColors.error, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  message,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.12),
+                shape: BoxShape.circle,
               ),
-            ],
-          ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                color: AppColors.error,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -140,18 +176,36 @@ class AuthSubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton(
-      onPressed: onPressed,
-      child: loading
-          ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.4,
-                color: Colors.black,
+    return SizedBox(
+      height: 52,
+      width: double.infinity,
+      child: FilledButton(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          elevation: 0,
+        ),
+        onPressed: loading ? null : onPressed,
+        child: loading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : Text(
+                label,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
-            )
-          : Text(label),
+      ),
     );
   }
 }
@@ -200,6 +254,11 @@ class _PasswordFieldState extends State<PasswordField> {
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hintText,
+        prefixIcon: const Icon(
+          Icons.lock_outline_rounded,
+          color: AppColors.textSecondary,
+          size: 20,
+        ),
         suffixIcon: IconButton(
           tooltip: _obscure ? 'Show password' : 'Hide password',
           onPressed: () => setState(() => _obscure = !_obscure),
@@ -208,6 +267,7 @@ class _PasswordFieldState extends State<PasswordField> {
                 ? Icons.visibility_outlined
                 : Icons.visibility_off_outlined,
             color: AppColors.textSecondary,
+            size: 20,
           ),
         ),
       ),
@@ -231,7 +291,7 @@ class RoleSelector extends StatelessWidget {
             selected: role == value,
             onTap: () => onChanged(role),
           ),
-          if (role != UserRole.mobileRoles.last) const SizedBox(height: 8),
+          if (role != UserRole.mobileRoles.last) const SizedBox(height: 10),
         ],
       ],
     );
@@ -252,39 +312,76 @@ class _RoleOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final icon = switch (role) {
+      UserRole.customer => Icons.person_outline_rounded,
+      UserRole.provider => Icons.handyman_outlined,
+      UserRole.supplier => Icons.storefront_outlined,
+      UserRole.admin => Icons.admin_panel_settings_outlined,
+    };
+
     return Semantics(
       button: true,
       selected: selected,
       child: Material(
-        color: selected ? const Color(0x14163B60) : AppColors.surface,
+        color: selected
+            ? AppColors.primary.withOpacity(0.06)
+            : AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           side: BorderSide(
             color: selected ? AppColors.primary : AppColors.border,
-            width: selected ? 1.5 : 1,
+            width: selected ? 1.8 : 1,
           ),
         ),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                Icon(
-                  selected ? Icons.check_circle : Icons.circle_outlined,
-                  color: selected ? AppColors.primary : AppColors.textSecondary,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.primary.withOpacity(0.12)
+                        : AppColors.neutral,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: selected ? AppColors.primary : AppColors.textSecondary,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(role.label, style: theme.textTheme.titleLarge),
+                      Text(
+                        role.label,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: selected
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text(role.description, style: theme.textTheme.bodySmall),
+                      Text(
+                        role.description,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ],
                   ),
+                ),
+                Icon(
+                  selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                  color: selected ? AppColors.primary : AppColors.border,
+                  size: 22,
                 ),
               ],
             ),
@@ -299,22 +396,98 @@ Future<bool> confirmLogout(BuildContext context) async {
   final result = await showDialog<bool>(
     context: context,
     builder: (context) {
-      return AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text('Log out'),
-        content: const Text(
-          'You will need to sign in again to use ServiceHub.',
+      final theme = Theme.of(context);
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+        elevation: 0,
+        backgroundColor: AppColors.surface,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: AppColors.error,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Log out of ServiceHub?',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Are you sure you want to log out? You will need to enter your credentials again to access your account.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: const BorderSide(color: AppColors.border),
+                      ),
+                      onPressed: () => Navigator.pop(context, false),
+                      child: Text(
+                        'Cancel',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: () => Navigator.pop(context, true),
+                      icon: const Icon(Icons.logout_rounded, size: 18),
+                      label: Text(
+                        'Log out',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Log out'),
-          ),
-        ],
+        ),
       );
     },
   );

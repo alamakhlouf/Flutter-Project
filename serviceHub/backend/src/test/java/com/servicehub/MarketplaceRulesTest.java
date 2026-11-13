@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,6 +37,21 @@ class MarketplaceRulesTest {
         mvc.perform(get("/api/inventory/"+item).header("Authorization","Bearer "+customer)).andExpect(status().isForbidden());
         mvc.perform(post("/api/inventory").header("Authorization","Bearer "+provider).contentType(MediaType.APPLICATION_JSON)
                 .content(inventoryPayload(-1))).andExpect(status().isBadRequest());
+    }
+
+    @Test void supplierProductImageUrlPersistsInTheDatabase() throws Exception {
+        String supplier=loginSeedSupplier();
+        String imageUrl="https://example.test/products/"+"x".repeat(300)+".jpg";
+        String request="{\"name\":\"Brass ball valve\",\"category\":\"Plumbing\",\"price\":12.50,"
+                +"\"imageUrl\":\""+imageUrl+"\",\"quantityAvailable\":40,\"available\":true}";
+        JsonNode created=body(mvc.perform(post("/api/products").header("Authorization","Bearer "+supplier)
+                .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isOk()).andReturn());
+        assertEquals(imageUrl,created.get("imageUrl").asText());
+
+        JsonNode loaded=body(mvc.perform(get("/api/products/"+created.get("id").asText()))
+                .andExpect(status().isOk()).andReturn());
+        assertEquals(imageUrl,loaded.get("imageUrl").asText());
     }
 
     @Test void bookingTransitionsReviewEligibilityAndNotificationOwnershipWork() throws Exception {
@@ -88,6 +104,33 @@ class MarketplaceRulesTest {
         mvc.perform(post("/api/workshops/"+workshop+"/registrations").header("Authorization","Bearer "+customer)).andExpect(status().isOk());
         mvc.perform(post("/api/workshops/"+workshop+"/registrations").header("Authorization","Bearer "+customer)).andExpect(status().isConflict());
         mvc.perform(post("/api/workshops/"+workshop+"/registrations").header("Authorization","Bearer "+anotherCustomer)).andExpect(status().isConflict());
+    }
+
+    @Test void everyAccountRoleCanOrderSupplierProductsAndSeeTheirOrders() throws Exception {
+        String customer=token(Role.CUSTOMER);
+        String provider=token(Role.PROVIDER);
+        String supplierBuyer=token(Role.SUPPLIER);
+        String admin=loginSeedAdmin();
+
+        JsonNode productList=body(mvc.perform(get("/api/products")).andExpect(status().isOk()).andReturn());
+        String productId=productList.get("content").get(0).get("id").asText();
+        String[] buyers={customer,provider,supplierBuyer,admin};
+        for (String buyer:buyers) {
+            JsonNode catalog=body(mvc.perform(get("/api/products").header("Authorization","Bearer "+buyer))
+                    .andExpect(status().isOk()).andReturn());
+            assertEquals(productId,catalog.get("content").get(0).get("id").asText());
+            JsonNode order=body(mvc.perform(post("/api/orders").header("Authorization","Bearer "+buyer)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"items\":[{\"productId\":\""+productId+"\",\"quantity\":1}]}"))
+                    .andExpect(status().isOk()).andReturn());
+            JsonNode myOrders=body(mvc.perform(get("/api/orders/my").header("Authorization","Bearer "+buyer))
+                    .andExpect(status().isOk()).andReturn());
+            assertTrue(myOrders.isArray());
+            assertTrue(myOrders.toString().contains(order.get("id").asText()));
+        }
+        mvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"items\":[{\"productId\":\""+productId+"\",\"quantity\":1}]}"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test void reportModerationIsAdminOnly() throws Exception {

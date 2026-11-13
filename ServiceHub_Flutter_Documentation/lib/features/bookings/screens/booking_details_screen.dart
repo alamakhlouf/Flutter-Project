@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/app_routes.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
 import '../../auth/models/auth_user.dart';
+import '../../reviews/services/review_service.dart';
 import '../bookings_keys.dart';
 import '../models/booking_model.dart';
 import '../services/booking_service.dart';
@@ -23,6 +25,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   String? _errorMessage;
   BookingModel? _booking;
   bool _bookingServiceInitialized = false;
+  late ReviewService _reviewService;
+  bool _checkingReview = false;
+  bool _reviewed = false;
+  String? _reviewCheckError;
 
   @override
   void didChangeDependencies() {
@@ -31,6 +37,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
     _bookingServiceInitialized = true;
     _bookingService = BookingService(api: AuthScope.of(context).api);
+    _reviewService = ReviewService(api: AuthScope.of(context).api);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadBooking();
     });
@@ -49,6 +56,11 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         _booking = booking;
         _isLoading = false;
       });
+      if (booking.status == BookingStatus.completed &&
+          AuthScope.of(context).user.role == UserRole.customer &&
+          AuthScope.of(context).user.id == booking.customerId) {
+        await _checkReview(booking);
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -61,6 +73,48 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         _errorMessage = 'Failed to load booking details: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _checkReview(BookingModel booking) async {
+    setState(() {
+      _checkingReview = true;
+      _reviewCheckError = null;
+    });
+    try {
+      final reviews = await _reviewService.forService(booking.serviceId);
+      if (!mounted) return;
+      setState(() {
+        _reviewed = reviews.any((review) => review.bookingId == booking.id);
+        _checkingReview = false;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _reviewCheckError = error.message;
+        _checkingReview = false;
+      });
+    } on Object {
+      if (!mounted) return;
+      setState(() {
+        _reviewCheckError =
+            'Unable to check whether this booking was reviewed.';
+        _checkingReview = false;
+      });
+    }
+  }
+
+  Future<void> _writeReview(BookingModel booking) async {
+    final submitted = await Navigator.of(context)
+        .pushNamed(AppRoutes.createReview, arguments: booking);
+    if (!mounted) return;
+    if (submitted == true) {
+      setState(() {
+        _reviewed = true;
+        _reviewCheckError = null;
+      });
+    } else {
+      await _checkReview(booking);
     }
   }
 
@@ -257,6 +311,44 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                         label: const Text('Cancel Booking'),
                         onPressed: _cancelBooking,
                       ),
+                    ],
+                    if (booking.status == BookingStatus.completed &&
+                        user.id == booking.customerId) ...[
+                      const SizedBox(height: 8),
+                      if (_checkingReview)
+                        const Center(child: CircularProgressIndicator())
+                      else if (_reviewCheckError != null)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _reviewCheckError!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.error,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => _checkReview(booking),
+                              child: const Text('Try again'),
+                            ),
+                          ],
+                        )
+                      else if (_reviewed)
+                        const ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            Icons.check_circle_outline,
+                            color: AppColors.success,
+                          ),
+                          title: Text('You reviewed this booking'),
+                        )
+                      else
+                        OutlinedButton.icon(
+                          key: const ValueKey('booking-write-review'),
+                          icon: const Icon(Icons.star_outline_rounded),
+                          label: const Text('Write a review'),
+                          onPressed: () => _writeReview(booking),
+                        ),
                     ],
                   ],
                 ],

@@ -9,6 +9,7 @@ import 'package:service_hub/app/app.dart';
 import 'package:service_hub/design_system/app_colors.dart';
 import 'package:service_hub/features/auth/auth_keys.dart';
 import 'package:service_hub/features/auth/services/auth_service.dart';
+import 'package:service_hub/features/profile/profile_keys.dart';
 
 import 'support/memory_token_storage.dart';
 
@@ -67,7 +68,7 @@ void main() {
     expect(
       Theme.of(buttonContext).filledButtonTheme.style?.backgroundColor
           ?.resolve(const <WidgetState>{}),
-      AppColors.secondary,
+      AppColors.primary,
     );
   });
 
@@ -145,14 +146,16 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('Hello, A Customer'), findsOneWidget);
-    expect(find.text('Role'), findsOneWidget);
-    expect(find.text('Customer'), findsOneWidget);
-    expect(find.text('Browse Inventory'), findsOneWidget);
+    expect(find.byKey(const ValueKey('bottom_nav_services')), findsOneWidget);
+    expect(find.byKey(const ValueKey('bottom_nav_supplier')), findsOneWidget);
+    expect(find.byKey(const ValueKey('bottom_nav_workshops')), findsOneWidget);
+    expect(find.byKey(const ValueKey('bottom_nav_profile')), findsOneWidget);
     expect(find.text('Manage My Inventory'), findsNothing);
     expect(storage.value, 'customer-token');
 
-    await tester.tap(find.byKey(AuthKeys.logout));
+    await tester.tap(find.byKey(const ValueKey('bottom_nav_profile')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(ProfileKeys.logout));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.widgetWithText(FilledButton, 'Log out'));
@@ -189,8 +192,10 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('Browse Inventory'), findsOneWidget);
-    expect(find.text('Manage My Inventory'), findsOneWidget);
+    expect(find.byKey(const ValueKey('bottom_nav_supplier')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('bottom_nav_supplier')));
+    await tester.pumpAndSettle();
+    expect(find.text('Available Inventory'), findsOneWidget);
     expect(find.text('Manage My Services'), findsNothing);
   });
 
@@ -302,7 +307,6 @@ void main() {
 
     expect(body['role'], 'SUPPLIER');
     expect(body.containsKey('confirmPassword'), isFalse);
-    expect(find.text('Hello, Sam Supplier'), findsOneWidget);
-    expect(find.text('Supplier'), findsOneWidget);
+    expect(find.byKey(const ValueKey('bottom_nav_supplier')), findsOneWidget);
   });
 }

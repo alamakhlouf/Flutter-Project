@@ -5,6 +5,7 @@ import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
 import '../models/inventory_product_model.dart';
 import '../services/inventory_product_service.dart';
+import '../widgets/inventory_product_card.dart';
 import 'supplier_inventory_form_screen.dart';
 
 class SupplierInventoryScreen extends StatefulWidget {
@@ -146,8 +147,8 @@ class _SupplierInventoryScreenState extends State<SupplierInventoryScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.secondary,
-        foregroundColor: Colors.black,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
         icon: const Icon(Icons.add),
         label: const Text('Add Item'),
         onPressed: () => _openForm(),
@@ -181,38 +182,39 @@ class _SupplierInventoryScreenState extends State<SupplierInventoryScreen> {
       itemCount: _products.length,
       itemBuilder: (context, index) {
         final product = _products[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-            title: Text(product.name),
-            subtitle: Text(
-              '${product.category} · ${product.price.toStringAsFixed(2)} DZD'
-              '${product.quantityAvailable == null ? '' : ' · Qty ${product.quantityAvailable}'}',
-            ),
-            isThreeLine: product.description?.isNotEmpty == true,
-            trailing: PopupMenuButton<String>(
-              onSelected: (action) {
-                if (action == 'edit') _openForm(product);
-                if (action == 'delete') _delete(product);
-                if (action == 'toggle') {
-                  _setAvailable(product, !product.available);
-                }
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                PopupMenuItem(
-                  value: 'toggle',
-                  child: Text(product.available ? 'Unpublish' : 'Publish'),
-                ),
-                const PopupMenuItem(value: 'delete', child: Text('Remove')),
-              ],
-            ),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: InventoryProductCard(
+            product: product,
+            showSupplier: false,
+            showOwnerStockStatus: true,
             onTap: () => _openForm(product),
-            leading: Icon(
-              product.available
-                  ? Icons.inventory_2_outlined
-                  : Icons.inventory_outlined,
+            actions: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Edit item',
+                  onPressed: () => _openForm(product),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (action) {
+                    if (action == 'edit') _openForm(product);
+                    if (action == 'delete') _delete(product);
+                    if (action == 'toggle') {
+                      _setAvailable(product, !product.available);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    PopupMenuItem(
+                      value: 'toggle',
+                      child: Text(product.available ? 'Unpublish' : 'Publish'),
+                    ),
+                    const PopupMenuItem(value: 'delete', child: Text('Remove')),
+                  ],
+                ),
+              ],
             ),
           ),
         );

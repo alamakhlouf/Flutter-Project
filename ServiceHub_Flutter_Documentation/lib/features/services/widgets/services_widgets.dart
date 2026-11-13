@@ -20,9 +20,13 @@ class ServiceStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = isActive ? AppColors.success : AppColors.textSecondary;
-    final bgColor = isActive ? const Color(0xE6EBF5EE) : const Color(0xFFEEEEEE);
+    final bgColor = isActive
+        ? const Color(0xE6EBF5EE)
+        : const Color(0xFFEEEEEE);
     final text = isActive ? 'Active' : 'Inactive';
-    final icon = isActive ? Icons.check_circle_outline : Icons.pause_circle_outline;
+    final icon = isActive
+        ? Icons.check_circle_outline
+        : Icons.pause_circle_outline;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -32,7 +36,7 @@ class ServiceStatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -41,13 +45,11 @@ class ServiceStatusBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             text,
-            style: (compact
-                    ? theme.textTheme.labelSmall
-                    : theme.textTheme.labelMedium)
-                ?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
+            style:
+                (compact
+                        ? theme.textTheme.labelSmall
+                        : theme.textTheme.labelMedium)
+                    ?.copyWith(color: color, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -120,12 +122,9 @@ class ServiceCard extends StatelessWidget {
 
     return Card(
       key: ServicesKeys.serviceCard(service.id),
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 14),
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       color: AppColors.surface,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -136,106 +135,140 @@ class ServiceCard extends StatelessWidget {
             _ServiceHeaderImage(
               imageUrl: service.imageUrl,
               category: service.category,
-              isActive: service.isActive,
             ),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
-                          service.title,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
+                          service.category.toUpperCase(),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.45,
                           ),
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      ServiceStatusBadge(isActive: service.isActive),
+                      if (isProviderView)
+                        ServiceStatusBadge(
+                          isActive: service.isActive,
+                          compact: true,
+                        ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 7),
+                  Text(
+                    service.title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 5),
                   if (service.providerName != null && !isProviderView) ...[
                     Row(
                       children: [
+                        CircleAvatar(
+                          radius: 8,
+                          backgroundColor: AppColors.neutral,
+                          child: Text(
+                            service.providerName!.isEmpty
+                                ? 'P'
+                                : service.providerName![0].toUpperCase(),
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppColors.primary,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'by ${service.providerName}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 7),
+                  ],
+                  if (service.location != null &&
+                      service.location!.isNotEmpty) ...[
+                    Row(
+                      children: [
                         const Icon(
-                          Icons.person_outline,
+                          Icons.location_on_outlined,
                           size: 14,
                           color: AppColors.textSecondary,
                         ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            service.providerName!,
-                            style: theme.textTheme.bodySmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                  ],
-                  Text(
-                    service.description,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.neutral,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          service.category,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      if (service.location != null &&
-                          service.location!.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.location_on_outlined,
-                          size: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 2),
-                        Flexible(
-                          child: Text(
                             service.location!,
-                            style: theme.textTheme.bodySmall,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
-                      const Spacer(),
-                      Text(
-                        service.formattedPrice,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          color: AppColors.secondary,
-                          fontWeight: FontWeight.bold,
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              service.price != null && service.price! > 0
+                                  ? 'Starting at'
+                                  : 'Pricing',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              service.formattedPrice,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
                       ),
+                      if (!isProviderView)
+                        FilledButton(
+                          onPressed: onTap,
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(0, 42),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                          ),
+                          child: const Text('View details'),
+                        ),
                     ],
                   ),
                   if (isProviderView) ...[
@@ -252,7 +285,7 @@ class ServiceCard extends StatelessWidget {
                         Switch(
                           key: ServicesKeys.toggleActiveSwitch(service.id),
                           value: service.isActive,
-                          activeColor: AppColors.secondary,
+                          activeThumbColor: AppColors.secondary,
                           onChanged: onToggleActive,
                         ),
                         const Spacer(),
@@ -284,26 +317,22 @@ class ServiceCard extends StatelessWidget {
 }
 
 class _ServiceHeaderImage extends StatelessWidget {
-  const _ServiceHeaderImage({
-    required this.imageUrl,
-    required this.category,
-    required this.isActive,
-  });
+  const _ServiceHeaderImage({required this.imageUrl, required this.category});
 
   final String? imageUrl;
   final String category;
-  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
-    final validUrl = imageUrl != null &&
+    final validUrl =
+        imageUrl != null &&
         imageUrl!.isNotEmpty &&
         (imageUrl!.startsWith('http://') || imageUrl!.startsWith('https://'));
 
     return Container(
-      height: 140,
+      height: 156,
       width: double.infinity,
-      color: AppColors.primary.withOpacity(0.06),
+      color: AppColors.surface,
       child: validUrl
           ? Image.network(
               imageUrl!,
@@ -311,7 +340,35 @@ class _ServiceHeaderImage extends StatelessWidget {
               errorBuilder: (context, error, stackTrace) =>
                   _placeholder(category),
             )
-          : _placeholder(category),
+          : Stack(
+              fit: StackFit.expand,
+              children: [
+                _placeholder(category),
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: Container(
+                    margin: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface.withValues(alpha: 0.94),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      category.toUpperCase(),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -352,17 +409,8 @@ class _ServiceHeaderImage extends StatelessWidget {
         children: [
           Icon(
             icon,
-            size: 44,
-            color: AppColors.primary.withOpacity(0.5),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            category,
-            style: TextStyle(
-              color: AppColors.primary.withOpacity(0.6),
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
+            size: 40,
+            color: AppColors.primary.withValues(alpha: 0.38),
           ),
         ],
       ),
@@ -372,10 +420,7 @@ class _ServiceHeaderImage extends StatelessWidget {
 
 /// Dialog asking confirmation before deleting a service.
 class DeleteServiceDialog extends StatelessWidget {
-  const DeleteServiceDialog({
-    super.key,
-    required this.serviceTitle,
-  });
+  const DeleteServiceDialog({super.key, required this.serviceTitle});
 
   final String serviceTitle;
 
@@ -430,11 +475,8 @@ class ServiceFilterSheet extends StatefulWidget {
   final String? selectedCategory;
   final double? maxPrice;
   final String? location;
-  final void Function({
-    String? category,
-    double? maxPrice,
-    String? location,
-  }) onApply;
+  final void Function({String? category, double? maxPrice, String? location})
+  onApply;
 
   static Future<void> show({
     required BuildContext context,
@@ -445,7 +487,8 @@ class ServiceFilterSheet extends StatefulWidget {
       String? category,
       double? maxPrice,
       String? location,
-    }) onApply,
+    })
+    onApply,
   }) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -528,10 +571,7 @@ class _ServiceFilterSheetState extends State<ServiceFilterSheet> {
         children: [
           Row(
             children: [
-              Text(
-                'Filter Services',
-                style: theme.textTheme.headlineMedium,
-              ),
+              Text('Filter Services', style: theme.textTheme.headlineMedium),
               const Spacer(),
               TextButton(
                 key: ServicesKeys.filterResetButton,
@@ -553,10 +593,7 @@ class _ServiceFilterSheetState extends State<ServiceFilterSheet> {
               ),
             ),
             items: categories.map((cat) {
-              return DropdownMenuItem<String>(
-                value: cat,
-                child: Text(cat),
-              );
+              return DropdownMenuItem<String>(value: cat, child: Text(cat));
             }).toList(),
             onChanged: (value) {
               if (value != null) {

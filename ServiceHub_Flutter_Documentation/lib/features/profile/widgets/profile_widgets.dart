@@ -6,13 +6,15 @@ class ProfileAvatar extends StatefulWidget {
   const ProfileAvatar({
     required this.name,
     this.imageUrl,
-    this.size = 96,
+    this.size = 100,
+    this.showBorder = true,
     super.key,
   });
 
   final String name;
   final String? imageUrl;
   final double size;
+  final bool showBorder;
 
   @override
   State<ProfileAvatar> createState() => _ProfileAvatarState();
@@ -34,47 +36,67 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
       label: 'Profile image',
       child: Column(
         children: [
-          if (url.isEmpty)
-            _initial(context)
-          else
-            ClipOval(
-              child: Image.network(
-                url,
-                width: widget.size,
-                height: widget.size,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return Semantics(
-                    label: 'Loading image',
-                    child: _circle(
-                      child: const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.surface,
-                        ),
-                      ),
+          Container(
+            padding: EdgeInsets.all(widget.showBorder ? 4.0 : 0),
+            decoration: widget.showBorder
+                ? BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.primary.withOpacity(0.18),
+                      width: 3,
                     ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  if (!_failed) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) setState(() => _failed = true);
-                    });
-                  }
-                  return _initial(context);
-                },
-              ),
-            ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.12),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  )
+                : null,
+            child: url.isEmpty
+                ? _initial(context)
+                : ClipOval(
+                    child: Image.network(
+                      url,
+                      width: widget.size,
+                      height: widget.size,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Semantics(
+                          label: 'Loading image',
+                          child: _circle(
+                            child: const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: AppColors.surface,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        if (!_failed) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) setState(() => _failed = true);
+                          });
+                        }
+                        return _initial(context);
+                      },
+                    ),
+                  ),
+          ),
           if (_failed) ...[
             const SizedBox(height: 8),
             Text(
               'Profile image could not be loaded.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.error,
+                  ),
             ),
           ],
         ],
@@ -88,8 +110,11 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
     return _circle(
       child: Text(
         letter,
-        style: Theme.of(context).textTheme.headlineLarge
-            ?.copyWith(color: AppColors.surface),
+        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+              color: AppColors.surface,
+              fontWeight: FontWeight.bold,
+              fontSize: widget.size * 0.4,
+            ),
       ),
     );
   }
@@ -99,8 +124,15 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
       width: widget.size,
       height: widget.size,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: AppColors.primary,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary,
+            AppColors.primary.withOpacity(0.85),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         shape: BoxShape.circle,
       ),
       child: child,
@@ -124,27 +156,34 @@ class ProfileNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       liveRegion: true,
-      child: DecoratedBox(
+      child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color),
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  message,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                shape: BoxShape.circle,
               ),
-            ],
-          ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                message,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -17,7 +17,7 @@ class AppTheme {
           primary: AppColors.primary,
           onPrimary: AppColors.surface,
           secondary: AppColors.secondary,
-          onSecondary: Colors.black,
+          onSecondary: AppColors.surface,
           tertiary: AppColors.tertiary,
           onTertiary: Colors.black,
           error: AppColors.error,
@@ -82,8 +82,8 @@ class AppTheme {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: AppColors.secondary,
-        foregroundColor: Colors.black,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
         minimumSize: const Size.fromHeight(52),
         textStyle: AppTextStyles.textTheme.labelLarge?.copyWith(
           fontSize: 16,

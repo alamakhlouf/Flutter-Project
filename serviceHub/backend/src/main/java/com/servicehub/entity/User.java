@@ -18,4 +18,5 @@ public class User extends AuditedEntity {
     @Enumerated(EnumType.STRING) @Column(nullable = false) private Role role;
     private String phone;
     private String profileImageUrl;
+    @Column(nullable = false) private boolean blocked = false;
 }

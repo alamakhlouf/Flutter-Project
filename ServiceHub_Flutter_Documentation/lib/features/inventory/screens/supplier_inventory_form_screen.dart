@@ -29,6 +29,7 @@ class _SupplierInventoryFormScreenState
   late final TextEditingController _priceController;
   late final TextEditingController _quantityController;
   late final TextEditingController _descriptionController;
+  late final TextEditingController _imageUrlController;
   var _available = true;
   var _saving = false;
   String? _error;
@@ -58,6 +59,7 @@ class _SupplierInventoryFormScreenState
     _descriptionController = TextEditingController(
       text: product?.description ?? '',
     );
+    _imageUrlController = TextEditingController(text: product?.imageUrl ?? '');
     _available = product?.available ?? true;
   }
 
@@ -68,6 +70,7 @@ class _SupplierInventoryFormScreenState
     _priceController.dispose();
     _quantityController.dispose();
     _descriptionController.dispose();
+    _imageUrlController.dispose();
     super.dispose();
   }
 
@@ -84,6 +87,7 @@ class _SupplierInventoryFormScreenState
         name: _nameController.text,
         category: _categoryController.text,
         price: double.parse(_priceController.text.trim()),
+        imageUrl: _imageUrlController.text,
         description: _descriptionController.text,
         quantityAvailable: _quantityController.text.trim().isEmpty
             ? null
@@ -140,7 +144,7 @@ class _SupplierInventoryFormScreenState
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(labelText: 'Price (DZD)'),
+                decoration: const InputDecoration(labelText: 'Price (USD)'),
                 validator: (value) {
                   final price = double.tryParse(value?.trim() ?? '');
                   if (price == null || price < 0) {
@@ -162,6 +166,30 @@ class _SupplierInventoryFormScreenState
                   final quantity = int.tryParse(value.trim());
                   if (quantity == null || quantity < 0) {
                     return 'Enter a non-negative whole number.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _imageUrlController,
+                keyboardType: TextInputType.url,
+                textCapitalization: TextCapitalization.none,
+                decoration: const InputDecoration(
+                  labelText: 'Image URL (optional)',
+                  hintText: 'https://example.com/product.jpg',
+                ),
+                validator: (value) {
+                  final url = value?.trim() ?? '';
+                  if (url.isEmpty) return null;
+                  if (url.length > 2048) {
+                    return 'Image URL must be 2048 characters or fewer.';
+                  }
+                  final uri = Uri.tryParse(url);
+                  if (uri == null ||
+                      (uri.scheme != 'http' && uri.scheme != 'https') ||
+                      uri.host.isEmpty) {
+                    return 'Enter a valid http or https image URL.';
                   }
                   return null;
                 },

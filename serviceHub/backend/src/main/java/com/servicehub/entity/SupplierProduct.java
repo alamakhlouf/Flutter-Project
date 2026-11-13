@@ -17,7 +17,7 @@ public class SupplierProduct extends AuditedEntity {
     @Column(length = 3000) private String description;
     @NotBlank @Column(nullable = false) private String category;
     @DecimalMin("0.00") @Column(nullable = false, precision = 12, scale = 2) private BigDecimal price;
-    private String imageUrl;
+    @Column(length = 2048) private String imageUrl;
     @Min(0) private Integer quantityAvailable;
     @Column(nullable = false) private boolean available = true;
 }

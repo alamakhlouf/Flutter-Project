@@ -69,7 +69,7 @@ void main() {
   }
 
   Future<void> openProfile(WidgetTester tester) async {
-    await tester.tap(find.byKey(ProfileKeys.open));
+    await tester.tap(find.byKey(const ValueKey('bottom_nav_profile')));
     await tester.pumpAndSettle();
   }
 
@@ -147,9 +147,9 @@ void main() {
     expect(find.text('Profile updated.'), findsOneWidget);
     expect(find.text('Updated Customer'), findsWidgets);
 
-    await tester.pageBack();
+    await tester.tap(find.byKey(const ValueKey('bottom_nav_services')));
     await tester.pumpAndSettle();
-    expect(find.text('Hello, Updated Customer'), findsOneWidget);
+    expect(find.text('Services Catalog'), findsOneWidget);
   });
 
   testWidgets('a provider sees professional details', (tester) async {
@@ -208,6 +208,9 @@ void main() {
             ),
             200,
           );
+        }
+        if (request.url.path != '/api/users/me') {
+          return http.Response('{"content":[]}', 200);
         }
         loads += 1;
         if (loads == 1) {

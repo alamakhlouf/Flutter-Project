@@ -6,6 +6,13 @@ class AppRoutes {
   static const home = '/home';
   static const profile = '/profile';
   static const editProfile = '/profile/edit';
+  static const myReports = '/reports/my';
+  static const adminReports = '/admin/reports';
+  static const createReport = '/reports/create';
+  static const createReview = '/reviews/create';
+  static const myActivity = '/activity';
+  static const productOrders = '/orders';
+  static const productOrderDetails = '/orders/details';
   static const adminBlocked = '/admin-blocked';
   static const sessionLoading = '/session-loading';
   static const sessionError = '/session-error';

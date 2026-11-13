@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/app_routes.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/validators.dart';
+import '../../../design_system/app_colors.dart';
 import '../auth_keys.dart';
 import '../models/auth_user.dart';
 import '../services/auth_service.dart';
@@ -73,8 +74,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-      title: 'Welcome back',
-      subtitle: 'Sign in with your email and password.',
+      title: 'Welcome Back',
+      subtitle: 'Sign in to access your services, orders & workshops.',
       child: Form(
         key: _formKey,
         autovalidateMode: _autovalidate,
@@ -84,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               if (_error != null) ...[
                 AuthErrorBanner(message: _error!),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
               ],
               TextFormField(
                 key: AuthKeys.loginEmail,
@@ -95,11 +96,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 autocorrect: false,
                 validator: Validators.email,
                 decoration: const InputDecoration(
-                  labelText: 'Email',
+                  labelText: 'Email Address',
                   hintText: 'you@example.com',
+                  prefixIcon: Icon(
+                    Icons.email_outlined,
+                    color: AppColors.textSecondary,
+                    size: 20,
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               PasswordField(
                 fieldKey: AuthKeys.loginPassword,
                 controller: _passwordController,
@@ -108,20 +114,39 @@ class _LoginScreenState extends State<LoginScreen> {
                 validator: Validators.password,
                 onSubmitted: (_) => _submit(),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               AuthSubmitButton(
                 key: AuthKeys.loginSubmit,
-                label: 'Sign in',
+                label: 'Sign In',
                 loading: _submitting,
                 onPressed: _submit,
               ),
-              const SizedBox(height: 8),
-              TextButton(
-                key: AuthKeys.createAccount,
-                onPressed: _submitting
-                    ? null
-                    : () => Navigator.of(context).pushNamed(AppRoutes.register),
-                child: const Text('Create an account'),
+              const SizedBox(height: 16),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    "Don't have an account?",
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
+                  TextButton(
+                    key: AuthKeys.createAccount,
+                    onPressed: _submitting
+                        ? null
+                        : () => Navigator.of(context)
+                            .pushNamed(AppRoutes.register),
+                    child: const Text(
+                      'Create account',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

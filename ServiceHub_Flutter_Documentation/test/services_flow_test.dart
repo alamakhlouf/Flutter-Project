@@ -145,8 +145,11 @@ void main() {
 
     await signIn(tester, client: client, email: 'customer@example.com');
 
-    expect(find.byKey(ServicesKeys.openCatalog), findsOneWidget);
-    await tester.tap(find.byKey(ServicesKeys.openCatalog));
+    expect(
+      find.byKey(const ValueKey('bottom_nav_services')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('bottom_nav_services')));
     await tester.pumpAndSettle();
 
     expect(find.text('Services Catalog'), findsOneWidget);
@@ -167,10 +170,9 @@ void main() {
     expect(find.text('\$80.00'), findsWidgets);
     expect(find.byKey(ServicesKeys.detailsBookButton), findsOneWidget);
 
-    // Book service
     await tester.tap(find.byKey(ServicesKeys.detailsBookButton));
-    await tester.pump();
-    expect(find.textContaining('Booking request created'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Book Service'), findsOneWidget);
   });
 
   testWidgets('Provider can list, create, edit, toggle, and delete services', (tester) async {

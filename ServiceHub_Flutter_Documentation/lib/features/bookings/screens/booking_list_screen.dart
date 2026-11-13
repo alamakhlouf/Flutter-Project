@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
+import '../../auth/models/auth_user.dart';
 import '../bookings_keys.dart';
 import '../models/booking_model.dart';
 import '../services/booking_service.dart';
@@ -72,10 +73,13 @@ class _BookingListScreenState extends State<BookingListScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final filtered = _filteredBookings;
+    final title = AuthScope.of(context).user.role == UserRole.provider
+        ? 'Incoming service requests'
+        : 'My service bookings';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Bookings & Requests'),
+        title: Text(title),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadBookings),
         ],

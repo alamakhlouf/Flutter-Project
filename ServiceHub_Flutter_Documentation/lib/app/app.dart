@@ -12,6 +12,7 @@ class ServiceHubApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'ServiceHub',
       theme: AppTheme.light,
       home: AuthGate(authService: authService),

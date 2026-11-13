@@ -42,7 +42,7 @@ void main() {
     await tester.pumpWidget(appWithAuthScope(const BookingListScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('My Bookings & Requests'), findsOneWidget);
+    expect(find.text('My service bookings'), findsOneWidget);
     expect(find.text('No bookings found.'), findsOneWidget);
   });
 

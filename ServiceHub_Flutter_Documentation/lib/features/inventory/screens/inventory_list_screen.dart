@@ -28,7 +28,8 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _serviceApi = widget.inventoryService ??
+    _serviceApi =
+        widget.inventoryService ??
         InventoryService(api: AuthScope.of(context).api);
     if (_loading && _items.isEmpty && _error == null) {
       _loadInventory();
@@ -67,17 +68,16 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
   }
 
   Future<void> _openCreateForm() async {
-    final created = await Navigator.of(context).pushNamed(AppRoutes.createInventory);
+    final created = await Navigator.of(context)
+        .pushNamed(AppRoutes.createInventory);
     if (created == true && mounted) {
       _loadInventory();
     }
   }
 
   Future<void> _openEditForm(InventoryItemModel item) async {
-    final updated = await Navigator.of(context).pushNamed(
-      AppRoutes.editInventory,
-      arguments: item,
-    );
+    final updated = await Navigator.of(context)
+        .pushNamed(AppRoutes.editInventory, arguments: item);
     if (updated == true && mounted) {
       _loadInventory();
     }
@@ -124,10 +124,7 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
       );
     }
   }
@@ -191,10 +188,7 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
       );
     }
   }
@@ -203,9 +197,7 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final filteredItems = _items
-        .where(
-          (item) => item.name.toLowerCase().contains(_query.toLowerCase()),
-        )
+        .where((item) => item.name.toLowerCase().contains(_query.toLowerCase()))
         .toList();
 
     return Scaffold(
@@ -221,8 +213,8 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.secondary,
-        foregroundColor: Colors.black,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
         icon: const Icon(Icons.add),
         label: const Text('Add item'),
         onPressed: _openCreateForm,
@@ -248,7 +240,10 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
             children: [
               const Icon(Icons.error_outline, size: 48, color: AppColors.error),
               const SizedBox(height: 12),
-              Text('Unable to Load Inventory', style: theme.textTheme.titleLarge),
+              Text(
+                'Unable to Load Inventory',
+                style: theme.textTheme.titleLarge,
+              ),
               const SizedBox(height: 8),
               Text(
                 _error!,
@@ -284,12 +279,14 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
         if (filteredItems.isEmpty)
           _emptyState(theme)
         else
-          ...filteredItems.map((item) => _InventoryCard(
-                item: item,
-                onEdit: () => _openEditForm(item),
-                onDelete: () => _deleteItem(item),
-                onUpdateQuantity: () => _updateQuantity(item),
-              )),
+          ...filteredItems.map(
+            (item) => _InventoryCard(
+              item: item,
+              onEdit: () => _openEditForm(item),
+              onDelete: () => _deleteItem(item),
+              onUpdateQuantity: () => _updateQuantity(item),
+            ),
+          ),
       ],
     );
   }
@@ -300,7 +297,11 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
       child: Center(
         child: Column(
           children: [
-            const Icon(Icons.inventory_2_outlined, size: 54, color: AppColors.textSecondary),
+            const Icon(
+              Icons.inventory_2_outlined,
+              size: 54,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(height: 12),
             Text('No inventory items yet', style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),

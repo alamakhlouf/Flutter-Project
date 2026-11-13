@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
-import '../../auth/models/auth_user.dart';
 import '../models/inventory_product_model.dart';
 import '../services/inventory_product_service.dart';
+import '../widgets/inventory_product_card.dart';
 import '../../../app/app_routes.dart';
+import '../../auth/models/auth_user.dart';
 
 class InventoryCatalogScreen extends StatefulWidget {
   const InventoryCatalogScreen({super.key, this.productService});
@@ -80,15 +81,15 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
   }
 
   Future<void> _buy(InventoryProduct product) async {
-    final controller = TextEditingController(text: '1');
+    var enteredQuantity = '1';
     final quantity = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Buy ${product.name}'),
         content: TextField(
-          controller: controller,
           autofocus: true,
           keyboardType: TextInputType.number,
+          onChanged: (value) => enteredQuantity = value,
           decoration: const InputDecoration(labelText: 'Quantity'),
         ),
         actions: [
@@ -98,7 +99,7 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
           ),
           FilledButton(
             onPressed: () {
-              final parsed = int.tryParse(controller.text.trim());
+              final parsed = int.tryParse(enteredQuantity.trim());
               if (parsed == null || parsed < 1) return;
               Navigator.pop(context, parsed);
             },
@@ -107,7 +108,6 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
         ],
       ),
     );
-    controller.dispose();
     if (quantity == null || !mounted) return;
 
     try {
@@ -128,11 +128,32 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
     }
   }
 
+  Future<void> _openDetails(InventoryProduct product) async {
+    final ordered = await Navigator.of(context)
+        .pushNamed(AppRoutes.inventoryDetails, arguments: product);
+    if (ordered == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Order placed successfully.')),
+      );
+      await _loadProducts(showLoading: false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final canBuy = AuthScope.of(context).user.role == UserRole.customer;
+    final role = AuthScope.of(context).user.role;
+    final canManageInventory =
+        role == UserRole.provider || role == UserRole.supplier;
     return Scaffold(
       appBar: AppBar(title: const Text('Available Inventory')),
+      floatingActionButton: canManageInventory
+          ? FloatingActionButton.extended(
+              icon: const Icon(Icons.inventory_2_outlined),
+              label: const Text('My inventory'),
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(AppRoutes.inventoryList),
+            )
+          : null,
       body: Column(
         children: [
           Padding(
@@ -158,7 +179,7 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: () => _loadProducts(showLoading: false),
-              child: _buildBody(context, canBuy),
+              child: _buildBody(context),
             ),
           ),
         ],
@@ -168,7 +189,10 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
 
   InventoryProductService get _service => _productService!;
 
-  Widget _buildBody(BuildContext context, bool canBuy) {
+  Widget _buildBody(BuildContext context) {
+    final userRole = AuthScope.of(context).user.role;
+    final isAdmin = userRole == UserRole.admin;
+
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
       return _MessageState(
@@ -188,49 +212,32 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
       itemCount: _products.length,
       itemBuilder: (context, index) {
         final product = _products[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: InventoryProductCard(
+            product: product,
+            actions: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Text(
-                  product.name,
-                  style: Theme.of(context).textTheme.titleLarge,
+                OutlinedButton(
+                  onPressed: () => _openDetails(product),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  child: const Text('View details'),
                 ),
-                const SizedBox(height: 4),
-                Text('${product.category} · ${product.supplierName}'),
-                if (product.description?.isNotEmpty == true) ...[
-                  const SizedBox(height: 8),
-                  Text(product.description!),
-                ],
-                const SizedBox(height: 8),
-                Text(
-                  '${product.price.toStringAsFixed(2)} DZD'
-                  '${product.quantityAvailable == null ? '' : ' · ${product.quantityAvailable} available'}',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pushNamed(
-                        AppRoutes.inventoryDetails,
-                        arguments: product,
-                      ),
-                      child: const Text('Details'),
+                if (!isAdmin)
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(64, 40),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                     ),
-                    if (canBuy) ...[
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: () => _buy(product),
-                        child: const Text('Buy'),
-                      ),
-                    ],
-                  ],
-                ),
+                    onPressed: () => _buy(product),
+                    child: const Text('Buy'),
+                  ),
               ],
             ),
           ),

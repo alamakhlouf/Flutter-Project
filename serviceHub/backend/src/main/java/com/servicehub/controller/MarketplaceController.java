@@ -105,6 +105,8 @@ public class MarketplaceController {
     @GetMapping("/admin/reports") public List<ReportDto> adminReports() { return market.adminReports(); }
     @GetMapping("/admin/reports/{id}") public ReportDto adminReport(@PathVariable UUID id) { return market.adminReport(id); }
     @PatchMapping("/admin/reports/{id}/status") public ReportDto reportStatus(@PathVariable UUID id,@Valid @RequestBody ReportStatusUpdate req) { return market.adminReportStatus(id,req.status()); }
+    @PatchMapping("/admin/users/{id}/block") public UserDto blockUser(@PathVariable UUID id) { return market.adminBlockUser(id); }
+    @DeleteMapping("/admin/services/{id}") public void deleteAdminService(@PathVariable UUID id) { market.adminDeleteService(id); }
     @GetMapping("/notifications") public List<NotificationDto> notifications() { return market.myNotifications(); }
     @PatchMapping("/notifications/{id}/read") public NotificationDto readNotification(@PathVariable UUID id) { return market.readNotification(id); }
     @PatchMapping("/notifications/read-all") public void readAll() { market.readAllNotifications(); }

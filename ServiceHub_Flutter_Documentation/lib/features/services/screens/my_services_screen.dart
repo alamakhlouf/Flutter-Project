@@ -28,7 +28,8 @@ class _MyServicesScreenState extends State<MyServicesScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _serviceApi = widget.servicesService ??
+    _serviceApi =
+        widget.servicesService ??
         ServicesService(api: AuthScope.of(context).api);
     if (_loading && _services.isEmpty && _error == null) {
       _loadMyServices();
@@ -92,10 +93,7 @@ class _MyServicesScreenState extends State<MyServicesScreen> {
         _services[index] = service;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
       );
     }
   }
@@ -119,26 +117,22 @@ class _MyServicesScreenState extends State<MyServicesScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
       );
     }
   }
 
   Future<void> _openCreateForm() async {
-    final created = await Navigator.of(context).pushNamed(AppRoutes.createService);
+    final created = await Navigator.of(context)
+        .pushNamed(AppRoutes.createService);
     if (created == true && mounted) {
       _loadMyServices();
     }
   }
 
   Future<void> _openEditForm(ServiceModel service) async {
-    final updated = await Navigator.of(context).pushNamed(
-      AppRoutes.editService,
-      arguments: service,
-    );
+    final updated = await Navigator.of(context)
+        .pushNamed(AppRoutes.editService, arguments: service);
     if (updated == true && mounted) {
       _loadMyServices();
     }
@@ -162,8 +156,8 @@ class _MyServicesScreenState extends State<MyServicesScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         key: ServicesKeys.createServiceButton,
-        backgroundColor: AppColors.secondary,
-        foregroundColor: Colors.black,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
         icon: const Icon(Icons.add),
         label: const Text('Add Service'),
         onPressed: _openCreateForm,
@@ -190,7 +184,10 @@ class _MyServicesScreenState extends State<MyServicesScreen> {
             children: [
               const Icon(Icons.error_outline, size: 48, color: AppColors.error),
               const SizedBox(height: 12),
-              Text('Unable to Load Services', style: theme.textTheme.titleLarge),
+              Text(
+                'Unable to Load Services',
+                style: theme.textTheme.titleLarge,
+              ),
               const SizedBox(height: 8),
               Text(
                 _error!,
@@ -258,10 +255,8 @@ class _MyServicesScreenState extends State<MyServicesScreen> {
           service: service,
           isProviderView: true,
           onTap: () {
-            Navigator.of(context).pushNamed(
-              AppRoutes.serviceDetails,
-              arguments: service,
-            );
+            Navigator.of(context)
+                .pushNamed(AppRoutes.serviceDetails, arguments: service);
           },
           onToggleActive: (val) => _toggleActive(service, val),
           onEdit: () => _openEditForm(service),
