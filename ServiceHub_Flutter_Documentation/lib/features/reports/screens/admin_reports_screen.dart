@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/app_routes.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
@@ -120,7 +121,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete Reported Service?'),
         content: Text(
-          'Are you sure you want to delete service "$displayName"? This listing will be removed.',
+          'Are you sure you want to delete service "$displayName"? This service listing will be permanently removed.',
         ),
         actions: [
           TextButton(
@@ -372,8 +373,14 @@ class _AdminReportCard extends StatelessWidget {
         targetUpper == 'PROFILE' ||
         targetUpper == 'PROVIDER' ||
         targetUpper == 'SUPPLIER' ||
-        targetUpper == 'CUSTOMER';
-    final isServiceTarget = targetUpper == 'SERVICE';
+        targetUpper == 'CUSTOMER' ||
+        targetUpper.contains('USER') ||
+        targetUpper.contains('PROVIDER') ||
+        targetUpper.contains('PROFILE');
+
+    final isServiceTarget = targetUpper == 'SERVICE' ||
+        targetUpper == 'SERVICES' ||
+        targetUpper.contains('SERVICE');
 
     final statusColor = switch (report.status.toUpperCase()) {
       'RESOLVED' => AppColors.success,
@@ -602,20 +609,38 @@ class _AdminReportCard extends StatelessWidget {
                 const SizedBox(height: 8),
               ],
               if (isServiceTarget && isPending) ...[
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.error,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () => Navigator.of(context).pushNamed(
+                          AppRoutes.serviceDetails,
+                          arguments: report.targetId,
+                        ),
+                        icon: const Icon(Icons.visibility_outlined, size: 18),
+                        label: const Text('View Service'),
+                      ),
                     ),
-                  ),
-                  onPressed: onDeleteService,
-                  icon: const Icon(Icons.delete_forever_rounded, size: 18),
-                  label: Text(
-                    report.targetTitle?.isNotEmpty == true
-                        ? 'Delete Service (${report.targetTitle})'
-                        : 'Delete Reported Service',
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.error,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: onDeleteService,
+                        icon: const Icon(Icons.delete_forever_rounded, size: 18),
+                        label: const Text('Delete Service'),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
               ],

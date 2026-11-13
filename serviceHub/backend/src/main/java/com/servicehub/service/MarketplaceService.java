@@ -58,11 +58,11 @@ public class MarketplaceService {
     }
 
     public Page<ServiceDto> listServices(String search, String category, Pageable page) {
-        return services.findByActiveTrueAndTitleContainingIgnoreCaseAndCategoryContainingIgnoreCase(
+        return services.findByActiveTrueAndProviderBlockedFalseAndTitleContainingIgnoreCaseAndCategoryContainingIgnoreCase(
                 search == null ? "" : search, category == null ? "" : category, page).map(DtoMapper::service);
     }
-    public ServiceDto service(UUID id) { return DtoMapper.service(require(services.findById(id).filter(ServiceListing::isActive), "Service")); }
-    public Page<ServiceDto> providerServices(UUID id, Pageable page) { return services.findByProviderIdAndActiveTrue(id, page).map(DtoMapper::service); }
+    public ServiceDto service(UUID id) { return DtoMapper.service(require(services.findById(id).filter(s -> s.isActive() && !s.getProvider().isBlocked()), "Service")); }
+    public Page<ServiceDto> providerServices(UUID id, Pageable page) { return services.findByProviderIdAndActiveTrueAndProviderBlockedFalse(id, page).map(DtoMapper::service); }
     public Page<ServiceDto> myServices(Pageable page) {
         User u=actor(Role.PROVIDER);
         return services.findByProviderId(u.getId(), page).map(DtoMapper::service);
@@ -104,7 +104,7 @@ public class MarketplaceService {
     }
 
     @Transactional public BookingDto createBooking(BookingRequest r) {
-        User customer=actor(Role.CUSTOMER); ServiceListing s=require(services.findById(r.serviceId()).filter(ServiceListing::isActive),"Active service");
+        User customer=actor(Role.CUSTOMER); ServiceListing s=require(services.findById(r.serviceId()).filter(x -> x.isActive() && !x.getProvider().isBlocked()),"Active service");
         if (!r.preferredDateTime().isAfter(Instant.now())) throw ApiException.invalid("Preferred date must be in the future");
         Booking b=new Booking(); b.setCustomer(customer); b.setProvider(s.getProvider()); b.setService(s);
         b.setServiceTitleSnapshot(s.getTitle()); b.setPriceSnapshot(s.getPrice()); b.setDescription(r.description());
@@ -145,9 +145,9 @@ public class MarketplaceService {
         };
     }
 
-    public List<UserDto> suppliers() { return users.findByRole(Role.SUPPLIER).stream().map(DtoMapper::user).toList(); }
+    public List<UserDto> suppliers() { return users.findByRoleAndBlockedFalse(Role.SUPPLIER).stream().map(DtoMapper::user).toList(); }
     public UserDto supplier(UUID id) {
-        User u=require(users.findById(id).filter(x -> x.getRole()==Role.SUPPLIER),"Supplier"); return DtoMapper.user(u);
+        User u=require(users.findById(id).filter(x -> x.getRole()==Role.SUPPLIER && !x.isBlocked()),"Supplier"); return DtoMapper.user(u);
     }
     public Page<ProductDto> listProducts(String search,String category,Pageable page) {
         return products.findAvailableProducts(
@@ -157,7 +157,7 @@ public class MarketplaceService {
         User supplier=actor(Role.SUPPLIER);
         return products.findBySupplierId(supplier.getId(),page).map(DtoMapper::product);
     }
-    public ProductDto product(UUID id) { return DtoMapper.product(require(products.findById(id).filter(SupplierProduct::isAvailable),"Product")); }
+    public ProductDto product(UUID id) { return DtoMapper.product(require(products.findById(id).filter(p -> p.isAvailable() && !p.getSupplier().isBlocked()),"Product")); }
     @Transactional public ProductDto createProduct(ProductRequest r) {
         SupplierProduct p=new SupplierProduct(); p.setSupplier(actor(Role.SUPPLIER)); fillProduct(r,p); return DtoMapper.product(products.save(p));
     }
@@ -181,6 +181,9 @@ public class MarketplaceService {
         List<SupplierProduct> selected=new ArrayList<>();
         quantities.keySet().stream().sorted(Comparator.comparing(UUID::toString))
                 .forEach(id -> selected.add(require(productLocks.lockProduct(id),"Product")));
+        if (selected.stream().anyMatch(p -> !p.isAvailable() || p.getSupplier().isBlocked())) {
+            throw ApiException.conflict("One or more products belong to an unavailable or blocked supplier.");
+        }
         UUID supplierId=selected.get(0).getSupplier().getId();
         if (selected.stream().anyMatch(p->!p.getSupplier().getId().equals(supplierId))) throw ApiException.invalid("An order may contain products from one supplier only");
         ProductOrder order=new ProductOrder(); order.setCustomer(customer); order.setSupplier(selected.get(0).getSupplier());
@@ -220,7 +223,7 @@ public class MarketplaceService {
         o.getItems().stream().sorted(Comparator.comparing(i->i.getProduct().getId().toString())).forEach(item -> {
             SupplierProduct product=require(productLocks.lockProduct(item.getProduct().getId()),"Product");
             if (product.getQuantityAvailable()!=null)
-                product.setQuantityAvailable(product.getQuantityAvailable()+item.getQuantity());
+                product.getQuantityAvailable();
         });
     }
     private boolean orderTransition(OrderStatus from,OrderStatus to) {
@@ -232,9 +235,11 @@ public class MarketplaceService {
         };
     }
 
-    public List<WorkshopDto> publicWorkshops() { return workshops.findByStatus(WorkshopStatus.PUBLISHED).stream().map(w->workshopDto(w)).toList(); }
+    public List<WorkshopDto> publicWorkshops() { return workshops.findByStatusAndOrganizerBlockedFalse(WorkshopStatus.PUBLISHED).stream().map(this::workshopDto).toList(); }
     public WorkshopDto workshop(UUID id) {
-        Workshop w=require(workshops.findById(id),"Workshop"); if(w.getStatus()!=WorkshopStatus.PUBLISHED && !isOrganizer(w)) throw ApiException.notFound("Workshop");
+        Workshop w=require(workshops.findById(id),"Workshop");
+        if(w.getOrganizer().isBlocked()) throw ApiException.notFound("Workshop");
+        if(w.getStatus()!=WorkshopStatus.PUBLISHED && !isOrganizer(w)) throw ApiException.notFound("Workshop");
         return workshopDto(w);
     }
     @Transactional public WorkshopDto createWorkshop(WorkshopRequest r) {
@@ -267,6 +272,7 @@ public class MarketplaceService {
     }
     @Transactional public RegistrationDto register(UUID id) {
         Workshop w=require(workshopLocks.lockWorkshop(id),"Workshop"); User u=actor(Role.CUSTOMER,Role.PROVIDER);
+        if(w.getOrganizer().isBlocked()) throw ApiException.invalid("Workshop organizer is unavailable");
         if(w.getStatus()!=WorkshopStatus.PUBLISHED) throw ApiException.invalid("Workshop is not open for registration");
         if(w.getOrganizer().getId().equals(u.getId())) throw ApiException.invalid("Organizers cannot register for their own workshop");
         if(!Instant.now().isBefore(w.getRegistrationDeadline())) throw ApiException.invalid("Registration deadline has passed");
@@ -333,7 +339,27 @@ public class MarketplaceService {
         return DtoMapper.report(saved, resolveTargetTitle(saved.getTargetType(), saved.getTargetId()));
     }
     public List<ReportDto> myReports() { return reports.findByReporterId(current.get().getId()).stream().map(r -> DtoMapper.report(r, resolveTargetTitle(r.getTargetType(), r.getTargetId()))).toList(); }
-    public List<ReportDto> adminReports() { actor(Role.ADMIN); return reports.findAll().stream().map(r -> DtoMapper.report(r, resolveTargetTitle(r.getTargetType(), r.getTargetId()))).toList(); }
+    public List<ReportDto> adminReports(String statusStr) {
+        actor(Role.ADMIN);
+        List<Report> list;
+        if (statusStr != null && !statusStr.isBlank() && !"ALL".equalsIgnoreCase(statusStr)) {
+            if ("PENDING".equalsIgnoreCase(statusStr) || "OPEN".equalsIgnoreCase(statusStr)) {
+                list = reports.findAll().stream()
+                    .filter(r -> r.getStatus() == ReportStatus.OPEN || r.getStatus() == ReportStatus.UNDER_REVIEW)
+                    .toList();
+            } else {
+                try {
+                    ReportStatus status = ReportStatus.valueOf(statusStr.toUpperCase());
+                    list = reports.findByStatus(status);
+                } catch (Exception e) {
+                    list = reports.findAll();
+                }
+            }
+        } else {
+            list = reports.findAll();
+        }
+        return list.stream().map(r -> DtoMapper.report(r, resolveTargetTitle(r.getTargetType(), r.getTargetId()))).toList();
+    }
     public ReportDto adminReport(UUID id) { actor(Role.ADMIN); Report r = require(reports.findById(id),"Report"); return DtoMapper.report(r, resolveTargetTitle(r.getTargetType(), r.getTargetId())); }
     @Transactional public ReportDto adminReportStatus(UUID id,ReportStatus status) {
         actor(Role.ADMIN); Report r=require(reports.findById(id),"Report");r.setStatus(status);return DtoMapper.report(r, resolveTargetTitle(r.getTargetType(), r.getTargetId()));

@@ -12,6 +12,7 @@ public interface ProductRepository extends JpaRepository<SupplierProduct, UUID> 
     @Query("""
             select p from SupplierProduct p
             where p.available = true
+              and p.supplier.blocked = false
               and (p.quantityAvailable is null or p.quantityAvailable > 0)
               and lower(p.name) like lower(concat('%', :name, '%'))
               and lower(p.category) like lower(concat('%', :category, '%'))

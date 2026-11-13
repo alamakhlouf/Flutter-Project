@@ -2,7 +2,7 @@ class AppConfig {
   const AppConfig._();
 
   static const apiBaseUrl = String.fromEnvironment(
-    'http://192.168.43.76:8080',
+    'API_BASE_URL',
     defaultValue: 'http://192.168.43.76:8080',
   );
 }

@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface UserRoleRepository extends JpaRepository<User, UUID> {
     List<User> findByRole(Role role);
+    List<User> findByRoleAndBlockedFalse(Role role);
 }

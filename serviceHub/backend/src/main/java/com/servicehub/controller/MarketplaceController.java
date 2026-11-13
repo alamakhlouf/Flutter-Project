@@ -102,7 +102,7 @@ public class MarketplaceController {
     @GetMapping("/providers/{providerId}/reviews") public List<ReviewDto> providerReviews(@PathVariable UUID providerId) { return market.providerReviews(providerId); }
     @PostMapping("/reports") public ReportDto report(@Valid @RequestBody ReportRequest req) { return market.createReport(req); }
     @GetMapping("/reports/my") public List<ReportDto> myReports() { return market.myReports(); }
-    @GetMapping("/admin/reports") public List<ReportDto> adminReports() { return market.adminReports(); }
+    @GetMapping("/admin/reports") public List<ReportDto> adminReports(@RequestParam(required = false) String status) { return market.adminReports(status); }
     @GetMapping("/admin/reports/{id}") public ReportDto adminReport(@PathVariable UUID id) { return market.adminReport(id); }
     @PatchMapping("/admin/reports/{id}/status") public ReportDto reportStatus(@PathVariable UUID id,@Valid @RequestBody ReportStatusUpdate req) { return market.adminReportStatus(id,req.status()); }
     @PatchMapping("/admin/users/{id}/block") public UserDto blockUser(@PathVariable UUID id) { return market.adminBlockUser(id); }

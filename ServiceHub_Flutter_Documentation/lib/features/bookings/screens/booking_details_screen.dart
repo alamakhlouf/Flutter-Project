@@ -129,7 +129,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         _booking = updated;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Booking status updated to ${newStatus.label}')),
+        SnackBar(
+          content: Text('Booking status updated to ${newStatus.label}'),
+          backgroundColor: AppColors.success,
+        ),
       );
       Navigator.of(context).pop(true);
     } on ApiException catch (e) {
@@ -141,14 +144,39 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   }
 
   Future<void> _cancelBooking() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Cancel Booking?'),
+        content: const Text(
+          'Are you sure you want to cancel this booking request?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep Booking'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Cancel Booking'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     try {
       final updated = await _bookingService.cancelBooking(widget.bookingId);
       if (!mounted) return;
       setState(() {
         _booking = updated;
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Booking cancelled')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Booking cancelled successfully')),
+      );
       Navigator.of(context).pop(true);
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -165,210 +193,410 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     final booking = _booking;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Booking Details')),
+      backgroundColor: AppColors.neutral,
+      appBar: AppBar(
+        title: const Text(
+          'Booking Details',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+      ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  _errorMessage!,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: AppColors.error,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
             )
-          : booking == null
-          ? const Center(child: Text('Booking not found'))
-          : SafeArea(
-              child: ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          booking.serviceTitle,
-                          style: theme.textTheme.headlineMedium,
+          : _errorMessage != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          size: 48,
+                          color: AppColors.error,
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: booking.status.color.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          booking.status.label,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: booking.status.color,
-                            fontWeight: FontWeight.bold,
+                        const SizedBox(height: 12),
+                        Text(
+                          _errorMessage!,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: AppColors.error,
                           ),
+                          textAlign: TextAlign.center,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  _infoRow(
-                    theme,
-                    'Preferred Date & Time',
-                    booking.preferredDateTime
-                        .toLocal()
-                        .toString()
-                        .split('.')
-                        .first,
-                  ),
-                  const SizedBox(height: 12),
-                  _infoRow(
-                    theme,
-                    'Agreed Price',
-                    '\$${booking.price.toStringAsFixed(2)}',
-                  ),
-                  const SizedBox(height: 12),
-                  _infoRow(
-                    theme,
-                    'Description / Requirements',
-                    booking.description.isEmpty
-                        ? 'No description provided'
-                        : booking.description,
-                  ),
-                  if (booking.customerName != null) ...[
-                    const SizedBox(height: 12),
-                    _infoRow(theme, 'Customer Name', booking.customerName!),
-                  ],
-                  const SizedBox(height: 32),
-                  if (user.role == UserRole.provider) ...[
-                    if (booking.status == BookingStatus.pending) ...[
-                      FilledButton.icon(
-                        key: BookingsKeys.acceptButton,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.success,
-                        ),
-                        icon: const Icon(Icons.check),
-                        label: const Text('Accept Booking'),
-                        onPressed: () => _updateStatus(BookingStatus.accepted),
-                      ),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        key: BookingsKeys.rejectButton,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                        ),
-                        icon: const Icon(Icons.close),
-                        label: const Text('Reject Booking'),
-                        onPressed: () => _updateStatus(BookingStatus.rejected),
-                      ),
-                    ],
-                    if (booking.status == BookingStatus.accepted) ...[
-                      FilledButton.icon(
-                        key: BookingsKeys.startProgressButton,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                        ),
-                        icon: const Icon(Icons.play_arrow),
-                        label: const Text('Mark In Progress'),
-                        onPressed: () =>
-                            _updateStatus(BookingStatus.inProgress),
-                      ),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        key: BookingsKeys.cancelButton,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                        ),
-                        icon: const Icon(Icons.cancel_outlined),
-                        label: const Text('Cancel Booking'),
-                        onPressed: _cancelBooking,
-                      ),
-                    ],
-                    if (booking.status == BookingStatus.inProgress) ...[
-                      FilledButton.icon(
-                        key: BookingsKeys.completeButton,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.success,
-                        ),
-                        icon: const Icon(Icons.done_all),
-                        label: const Text('Mark Completed'),
-                        onPressed: () => _updateStatus(BookingStatus.completed),
-                      ),
-                    ],
-                  ],
-                  if (user.role == UserRole.customer) ...[
-                    if (booking.status == BookingStatus.pending ||
-                        booking.status == BookingStatus.accepted) ...[
-                      OutlinedButton.icon(
-                        key: BookingsKeys.cancelButton,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                        ),
-                        icon: const Icon(Icons.cancel_outlined),
-                        label: const Text('Cancel Booking'),
-                        onPressed: _cancelBooking,
-                      ),
-                    ],
-                    if (booking.status == BookingStatus.completed &&
-                        user.id == booking.customerId) ...[
-                      const SizedBox(height: 8),
-                      if (_checkingReview)
-                        const Center(child: CircularProgressIndicator())
-                      else if (_reviewCheckError != null)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _reviewCheckError!,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.error,
+                )
+              : booking == null
+                  ? const Center(child: Text('Booking not found'))
+                  : SafeArea(
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                        children: [
+                          // Header Card
+                          Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.border),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withOpacity(0.04),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.home_repair_service_rounded,
+                                        size: 24,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Text(
+                                        booking.serviceTitle,
+                                        style: theme.textTheme.headlineSmall?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '\$${booking.price.toStringAsFixed(2)}',
+                                      style: theme.textTheme.headlineMedium?.copyWith(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: booking.status.color.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: booking.status.color.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        booking.status.label,
+                                        style: theme.textTheme.labelMedium?.copyWith(
+                                          color: booking.status.color,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Details Info Card
+                          Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _detailRow(
+                                  theme,
+                                  icon: Icons.event_available_rounded,
+                                  label: 'Preferred Date & Time',
+                                  value: _formatDate(booking.preferredDateTime),
+                                ),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 10),
+                                  child: Divider(height: 1, color: AppColors.border),
+                                ),
+                                if (booking.customerName != null) ...[
+                                  _detailRow(
+                                    theme,
+                                    icon: Icons.person_outline_rounded,
+                                    label: 'Customer Name',
+                                    value: booking.customerName!,
+                                  ),
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 10),
+                                    child: Divider(height: 1, color: AppColors.border),
+                                  ),
+                                ],
+                                _detailRow(
+                                  theme,
+                                  icon: Icons.description_outlined,
+                                  label: 'Requirements / Description',
+                                  value: booking.description.isEmpty
+                                      ? 'No description provided'
+                                      : booking.description,
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Provider Actions
+                          if (user.role == UserRole.provider) ...[
+                            if (booking.status == BookingStatus.pending) ...[
+                              SizedBox(
+                                height: 50,
+                                child: FilledButton.icon(
+                                  key: BookingsKeys.acceptButton,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.success,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.check_circle_rounded),
+                                  label: const Text('Accept Booking'),
+                                  onPressed: () => _updateStatus(BookingStatus.accepted),
+                                ),
                               ),
-                            ),
-                            TextButton(
-                              onPressed: () => _checkReview(booking),
-                              child: const Text('Try again'),
-                            ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                height: 50,
+                                child: OutlinedButton.icon(
+                                  key: BookingsKeys.rejectButton,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.error,
+                                    side: const BorderSide(color: AppColors.error),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.cancel_outlined),
+                                  label: const Text('Reject Booking'),
+                                  onPressed: () => _updateStatus(BookingStatus.rejected),
+                                ),
+                              ),
+                            ],
+                            if (booking.status == BookingStatus.accepted) ...[
+                              SizedBox(
+                                height: 50,
+                                child: FilledButton.icon(
+                                  key: BookingsKeys.startProgressButton,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.play_circle_fill_rounded),
+                                  label: const Text('Start Service (Mark In Progress)'),
+                                  onPressed: () =>
+                                      _updateStatus(BookingStatus.inProgress),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                height: 50,
+                                child: OutlinedButton.icon(
+                                  key: BookingsKeys.cancelButton,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.error,
+                                    side: const BorderSide(color: AppColors.error),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.cancel_outlined),
+                                  label: const Text('Cancel Booking'),
+                                  onPressed: _cancelBooking,
+                                ),
+                              ),
+                            ],
+                            if (booking.status == BookingStatus.inProgress) ...[
+                              SizedBox(
+                                height: 50,
+                                child: FilledButton.icon(
+                                  key: BookingsKeys.completeButton,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.success,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.check_circle_rounded),
+                                  label: const Text('Mark Completed'),
+                                  onPressed: () => _updateStatus(BookingStatus.completed),
+                                ),
+                              ),
+                            ],
                           ],
-                        )
-                      else if (_reviewed)
-                        const ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(
-                            Icons.check_circle_outline,
-                            color: AppColors.success,
-                          ),
-                          title: Text('You reviewed this booking'),
-                        )
-                      else
-                        OutlinedButton.icon(
-                          key: const ValueKey('booking-write-review'),
-                          icon: const Icon(Icons.star_outline_rounded),
-                          label: const Text('Write a review'),
-                          onPressed: () => _writeReview(booking),
-                        ),
-                    ],
-                  ],
-                ],
-              ),
-            ),
+
+                          // Customer Actions
+                          if (user.role == UserRole.customer) ...[
+                            if (booking.status == BookingStatus.pending ||
+                                booking.status == BookingStatus.accepted) ...[
+                              SizedBox(
+                                height: 50,
+                                child: OutlinedButton.icon(
+                                  key: BookingsKeys.cancelButton,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.error,
+                                    side: const BorderSide(color: AppColors.error),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.cancel_outlined),
+                                  label: const Text('Cancel Booking'),
+                                  onPressed: _cancelBooking,
+                                ),
+                              ),
+                            ],
+                            if (booking.status == BookingStatus.completed &&
+                                user.id == booking.customerId) ...[
+                              if (_checkingReview)
+                                const Center(
+                                  child: CircularProgressIndicator(color: AppColors.primary),
+                                )
+                              else if (_reviewCheckError != null)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _reviewCheckError!,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: AppColors.error,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _checkReview(booking),
+                                      child: const Text('Try again'),
+                                    ),
+                                  ],
+                                )
+                              else if (_reviewed)
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.success.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: AppColors.success.withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        color: AppColors.success,
+                                      ),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        'You reviewed this service booking',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.success,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else
+                                SizedBox(
+                                  height: 50,
+                                  child: OutlinedButton.icon(
+                                    key: const ValueKey('booking-write-review'),
+                                    style: OutlinedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.star_outline_rounded,
+                                      color: AppColors.warning,
+                                    ),
+                                    label: const Text('Write a Review'),
+                                    onPressed: () => _writeReview(booking),
+                                  ),
+                                ),
+                            ],
+                          ],
+                        ],
+                      ),
+                    ),
     );
   }
 
-  Widget _infoRow(ThemeData theme, String label, String value) {
-    return Column(
+  String _formatDate(DateTime dt) {
+    final local = dt.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year} at ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _detailRow(
+    ThemeData theme, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: AppColors.textSecondary,
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.neutral,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.textSecondary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 4),
-        Text(value, style: theme.textTheme.bodyLarge),
       ],
     );
   }

@@ -8,5 +8,6 @@ import java.util.UUID;
 
 public interface WorkshopRepository extends JpaRepository<Workshop, UUID> {
     List<Workshop> findByStatus(WorkshopStatus status);
+    List<Workshop> findByStatusAndOrganizerBlockedFalse(WorkshopStatus status);
     List<Workshop> findByOrganizerId(UUID organizerId);
 }
