@@ -17,7 +17,7 @@ public class User extends AuditedEntity {
     @Column(nullable = false) private String passwordHash;
     @Enumerated(EnumType.STRING) @Column(nullable = false) private Role role;
     private String phone;
-    private String profileImageUrl;
+    @Column(columnDefinition = "LONGTEXT") private String profileImageUrl;
     @Column(nullable = false) private boolean blocked = false;
     private String googleSubjectId;
 }
