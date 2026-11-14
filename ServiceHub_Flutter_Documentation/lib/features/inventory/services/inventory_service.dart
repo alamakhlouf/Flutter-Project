@@ -25,6 +25,9 @@ class InventoryService {
     required String description,
     required int quantity,
     required String unit,
+    required String catalogCategory,
+    required double catalogPrice,
+    String? imageUrl,
     int? lowStockThreshold,
   }) async {
     final body = <String, dynamic>{
@@ -32,6 +35,9 @@ class InventoryService {
       'description': description.trim(),
       'quantity': quantity,
       'unit': unit.trim(),
+      'catalogCategory': catalogCategory.trim(),
+      'catalogPrice': catalogPrice,
+      'imageUrl': imageUrl,
       'lowStockThreshold': lowStockThreshold,
     };
 
@@ -49,6 +55,9 @@ class InventoryService {
     required String description,
     required int quantity,
     required String unit,
+    required String catalogCategory,
+    required double catalogPrice,
+    String? imageUrl,
     int? lowStockThreshold,
   }) async {
     final body = <String, dynamic>{
@@ -57,6 +66,9 @@ class InventoryService {
       'description': description.trim(),
       'quantity': quantity,
       'unit': unit.trim(),
+      'catalogCategory': catalogCategory.trim(),
+      'catalogPrice': catalogPrice,
+      'imageUrl': imageUrl,
       'lowStockThreshold': lowStockThreshold,
     };
 

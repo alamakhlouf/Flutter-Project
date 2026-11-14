@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/image_renderer.dart';
 import '../../../design_system/app_colors.dart';
 
 import '../models/service_model.dart';
@@ -350,51 +351,42 @@ class _ServiceHeaderImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final validUrl =
-        imageUrl != null &&
-        imageUrl!.isNotEmpty &&
-        (imageUrl!.startsWith('http://') || imageUrl!.startsWith('https://'));
-
-    return Container(
+    return SizedBox(
       height: 156,
       width: double.infinity,
-      color: AppColors.surface,
-      child: validUrl
-          ? Image.network(
-              imageUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  _placeholder(category),
-            )
-          : Stack(
-              fit: StackFit.expand,
-              children: [
-                _placeholder(category),
-                Align(
-                  alignment: Alignment.topLeft,
-                  child: Container(
-                    margin: const EdgeInsets.all(10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface.withValues(alpha: 0.94),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      category.toUpperCase(),
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ImageRenderer(
+            imageUrl: imageUrl,
+            placeholder: _placeholder(category),
+            fit: BoxFit.cover,
+          ),
+          Align(
+            alignment: Alignment.topLeft,
+            child: Container(
+              margin: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 9,
+                vertical: 5,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.surface.withValues(alpha: 0.94),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                category.toUpperCase(),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
                 ),
-              ],
+              ),
             ),
+          ),
+        ],
+      ),
     );
   }
 

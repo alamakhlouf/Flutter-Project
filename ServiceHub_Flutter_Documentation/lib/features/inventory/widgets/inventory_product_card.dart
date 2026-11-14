@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/image_renderer.dart';
 import '../../../design_system/app_colors.dart';
 import '../models/inventory_product_model.dart';
 
@@ -24,12 +25,6 @@ class InventoryProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final imageUrl = product.imageUrl?.trim();
-    final uri = imageUrl == null ? null : Uri.tryParse(imageUrl);
-    final validImageUrl =
-        uri != null &&
-        (uri.scheme == 'https' || uri.scheme == 'http') &&
-        uri.host.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,13 +48,11 @@ class InventoryProductCard extends StatelessWidget {
                     SizedBox(
                       height: 144,
                       width: double.infinity,
-                      child: validImageUrl
-                          ? Image.network(
-                              imageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => _imagePlaceholder(),
-                            )
-                          : _imagePlaceholder(),
+                      child: ImageRenderer(
+                        imageUrl: product.imageUrl,
+                        placeholder: _imagePlaceholder(),
+                        fit: BoxFit.cover,
+                      ),
                     ),
                     if (onToggleFavorite != null)
                       Positioned(

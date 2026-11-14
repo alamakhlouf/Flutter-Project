@@ -26,6 +26,9 @@ class InventoryItemModel {
     required this.description,
     required this.quantity,
     required this.unit,
+    this.imageUrl,
+    this.catalogCategory,
+    this.catalogPrice,
     this.lowStockThreshold,
     this.createdAt,
     this.updatedAt,
@@ -37,6 +40,9 @@ class InventoryItemModel {
   final String description;
   final int quantity;
   final String unit;
+  final String? imageUrl;
+  final String? catalogCategory;
+  final double? catalogPrice;
   final int? lowStockThreshold;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -94,6 +100,9 @@ class InventoryItemModel {
       description: description,
       quantity: quantity,
       unit: unit,
+      imageUrl: _optionalString(json['imageUrl']),
+      catalogCategory: _optionalString(json['catalogCategory']),
+      catalogPrice: _optionalDouble(json['catalogPrice']),
       lowStockThreshold: lowStockThreshold,
       createdAt: createdAt,
       updatedAt: updatedAt,
@@ -108,6 +117,9 @@ class InventoryItemModel {
       'description': description,
       'quantity': quantity,
       'unit': unit,
+      if (imageUrl != null) 'imageUrl': imageUrl,
+      if (catalogCategory != null) 'catalogCategory': catalogCategory,
+      if (catalogPrice != null) 'catalogPrice': catalogPrice,
       if (lowStockThreshold != null) 'lowStockThreshold': lowStockThreshold,
       if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
@@ -121,6 +133,9 @@ class InventoryItemModel {
     String? description,
     int? quantity,
     String? unit,
+    String? imageUrl,
+    String? catalogCategory,
+    double? catalogPrice,
     int? lowStockThreshold,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -132,6 +147,9 @@ class InventoryItemModel {
       description: description ?? this.description,
       quantity: quantity ?? this.quantity,
       unit: unit ?? this.unit,
+      imageUrl: imageUrl ?? this.imageUrl,
+      catalogCategory: catalogCategory ?? this.catalogCategory,
+      catalogPrice: catalogPrice ?? this.catalogPrice,
       lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -149,5 +167,21 @@ class InventoryItemModel {
     }
     if (fallback != null) return fallback;
     throw const FormatException('Missing integer value');
+  }
+
+  static String? _optionalString(Object? value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    throw const FormatException('Unexpected inventory image field');
+  }
+
+  static double? _optionalDouble(Object? value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      if (parsed != null) return parsed;
+    }
+    throw const FormatException('Unexpected inventory price field');
   }
 }

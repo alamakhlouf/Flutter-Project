@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../../core/network/api_exception.dart';
+import '../../../core/utils/image_picker_helper.dart';
+import '../../../core/utils/validators.dart';
+import '../../../core/widgets/image_renderer.dart';
+import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
 import '../models/workshop_model.dart';
 import '../services/workshop_service.dart';
@@ -26,6 +32,8 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
   DateTime _deadline = DateTime.now().add(const Duration(hours: 12));
   String _workshopType = 'IN_PERSON';
   bool _busy = false;
+  bool _googleConnected = false;
+  String? _googleEmail;
 
   @override
   void initState() {
@@ -49,6 +57,86 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _service = WorkshopService(api: AuthScope.of(context).api);
+    _loadGoogleStatus();
+  }
+
+  Future<void> _loadGoogleStatus() async {
+    try {
+      final status = await _service.checkGoogleStatus();
+      if (!mounted) return;
+      setState(() {
+        _googleConnected = status['connected'] == true;
+        _googleEmail = status['googleEmail']?.toString();
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _connectGoogle() async {
+    setState(() => _busy = true);
+    try {
+      final googleSignIn = GoogleSignIn(
+        scopes: [
+          'email',
+          'profile',
+          'https://www.googleapis.com/auth/calendar',
+          'https://www.googleapis.com/auth/calendar.events',
+        ],
+        serverClientId:
+            '721746615689-31o7qo4p1rsu2s6ku9ako4galdjs064p.apps.googleusercontent.com',
+      );
+
+      final account = await googleSignIn.signIn();
+      if (account == null) {
+        if (mounted) setState(() => _busy = false);
+        return;
+      }
+
+      final auth = await account.authentication;
+      final accessToken = auth.accessToken;
+      if (accessToken == null || accessToken.isEmpty) {
+        throw ApiException(
+          message: 'Could not retrieve Google access token.',
+        );
+      }
+
+      final status = await _service.connectGoogleToken(
+        accessToken: accessToken,
+        email: account.email,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _googleConnected = status['connected'] == true;
+        _googleEmail = status['googleEmail']?.toString() ?? account.email;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Google Calendar connected successfully!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.message),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google connect error: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _save() async {
@@ -147,6 +235,66 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
               }
             },
           ),
+          if (_workshopType == 'ONLINE') ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _googleConnected
+                    ? AppColors.success.withOpacity(0.08)
+                    : AppColors.error.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _googleConnected
+                      ? AppColors.success.withOpacity(0.3)
+                      : AppColors.error.withOpacity(0.3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        _googleConnected ? Icons.check_circle : Icons.warning_amber_rounded,
+                        color: _googleConnected ? AppColors.success : AppColors.error,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _googleConnected
+                              ? 'Google Account Connected (${_googleEmail ?? 'Connected'})'
+                              : 'Google Account Required for Google Meet',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: _googleConnected ? AppColors.success : AppColors.error,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _googleConnected
+                        ? 'A real Google Meet link will be automatically generated and assigned upon creation.'
+                        : 'Please connect your Google account before creating an online workshop.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
+                  if (!_googleConnected) ...[
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : _connectGoogle,
+                      icon: const Icon(Icons.link, size: 18),
+                      label: const Text('Connect Google Account'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           for (final field in [
             _field(_title, 'Title'),
@@ -157,29 +305,52 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
             _field(_capacity, 'Capacity', keyboard: TextInputType.number),
           ])
             Padding(padding: const EdgeInsets.only(bottom: 16), child: field),
+          Text('Cover Image', style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(
+            onPressed: _busy
+                ? null
+                : () async {
+                    final base64Image =
+                        await ImagePickerHelper.pickAndConvertToBase64(
+                      context,
+                    );
+                    if (base64Image != null && mounted) {
+                      setState(() {
+                        _coverImageUrl.text = base64Image;
+                      });
+                    }
+                  },
+            icon: const Icon(Icons.photo_library_outlined),
+            label: const Text('Pick Image from Device'),
+          ),
+          const SizedBox(height: 12),
           TextFormField(
             controller: _coverImageUrl,
             keyboardType: TextInputType.url,
             textCapitalization: TextCapitalization.none,
+            validator: Validators.imageUrl,
             decoration: const InputDecoration(
-              labelText: 'Cover image URL (optional)',
-              hintText: 'https://example.com/workshop.jpg',
+              labelText: 'Cover image (optional)',
+              hintText: 'https://example.com/workshop.jpg or pick from device',
             ),
-            validator: (value) {
-              final url = value?.trim() ?? '';
-              if (url.isEmpty) return null;
-              if (url.length > 2048) {
-                return 'Image URL must be 2048 characters or fewer.';
-              }
-              final uri = Uri.tryParse(url);
-              if (uri == null ||
-                  (uri.scheme != 'http' && uri.scheme != 'https') ||
-                  uri.host.isEmpty) {
-                return 'Enter a valid http or https image URL.';
-              }
-              return null;
-            },
+            onChanged: (_) => setState(() {}),
           ),
+          if (_coverImageUrl.text.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 150,
+                width: double.infinity,
+                child: ImageRenderer(
+                  imageUrl: _coverImageUrl.text,
+                  placeholder: const Center(child: Text('Invalid image')),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           _dateButton(
             'Starts',

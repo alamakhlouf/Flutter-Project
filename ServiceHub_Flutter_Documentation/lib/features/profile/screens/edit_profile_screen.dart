@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_routes.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/image_picker_helper.dart';
 import '../../../core/utils/validators.dart';
+import '../../../core/widgets/image_renderer.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/models/auth_user.dart';
 import '../../auth/widgets/auth_widgets.dart';
@@ -175,23 +177,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 hintText: 'Optional',
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              key: ProfileKeys.imageUrl,
-                              controller: _imageController,
-                              keyboardType: TextInputType.url,
-                              autocorrect: false,
-                              validator: Validators.imageUrl,
-                              onChanged: (_) => setState(() {}),
-                              decoration: const InputDecoration(
-                                labelText: 'Profile image link',
-                                hintText: 'https://example.com/photo.jpg',
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Paste an image link. Uploading a file is not available.',
-                              style: theme.textTheme.bodySmall,
+                            const SizedBox(height: 16),
+                            OutlinedButton.icon(
+                              onPressed: _saving
+                                  ? null
+                                  : () async {
+                                      final base64Image =
+                                          await ImagePickerHelper.pickAndConvertToBase64(
+                                        context,
+                                      );
+                                      if (base64Image != null && mounted) {
+                                        setState(() {
+                                          _imageController.text = base64Image;
+                                        });
+                                      }
+                                    },
+                              icon: const Icon(Icons.photo_library_outlined),
+                              label: const Text('Pick Image from Device'),
                             ),
                             const SizedBox(height: 12),
                             _ImagePreview(url: _imageController.text),
@@ -262,7 +264,7 @@ class _ImagePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = url.trim();
-    if (text.isEmpty || Validators.imageUrl(text) != null) {
+    if (text.isEmpty) {
       return const _ImageFrame(
         child: _ImageMessage(
           icon: Icons.image_outlined,
@@ -271,22 +273,13 @@ class _ImagePreview extends StatelessWidget {
       );
     }
     return _ImageFrame(
-      child: Image.network(
-        text,
+      child: ImageRenderer(
+        imageUrl: text,
+        placeholder: const _ImageMessage(
+          icon: Icons.broken_image_outlined,
+          message: 'Image could not be loaded.',
+        ),
         fit: BoxFit.cover,
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return const _ImageMessage(
-            icon: Icons.hourglass_top,
-            message: 'Loading image',
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return const _ImageMessage(
-            icon: Icons.broken_image_outlined,
-            message: 'Image link could not be loaded.',
-          );
-        },
       ),
     );
   }

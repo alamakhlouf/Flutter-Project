@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/image_renderer.dart';
 import '../../../design_system/app_colors.dart';
 
 class WorkshopImage extends StatelessWidget {
@@ -10,22 +11,14 @@ class WorkshopImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = imageUrl?.trim();
-    final uri = url == null ? null : Uri.tryParse(url);
-    final validUrl =
-        uri != null &&
-        (uri.scheme == 'http' || uri.scheme == 'https') &&
-        uri.host.isNotEmpty;
     return SizedBox(
       height: height,
       width: double.infinity,
-      child: validUrl
-          ? Image.network(
-              url!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _placeholder(),
-            )
-          : _placeholder(),
+      child: ImageRenderer(
+        imageUrl: imageUrl,
+        placeholder: _placeholder(),
+        fit: BoxFit.cover,
+      ),
     );
   }
 

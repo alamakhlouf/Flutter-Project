@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/image_picker_helper.dart';
+import '../../../core/utils/validators.dart';
 import '../../auth/auth_scope.dart';
 import '../models/inventory_product_model.dart';
 import '../services/inventory_product_service.dart';
@@ -171,28 +173,34 @@ class _SupplierInventoryFormScreenState
                 },
               ),
               const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _saving
+                    ? null
+                    : () async {
+                        final base64Image =
+                            await ImagePickerHelper.pickAndConvertToBase64(
+                              context,
+                            );
+                        if (base64Image != null && mounted) {
+                          setState(() {
+                            _imageUrlController.text = base64Image;
+                          });
+                        }
+                      },
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Pick Image from Device'),
+              ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _imageUrlController,
                 keyboardType: TextInputType.url,
                 textCapitalization: TextCapitalization.none,
+                validator: Validators.imageUrl,
                 decoration: const InputDecoration(
-                  labelText: 'Image URL (optional)',
-                  hintText: 'https://example.com/product.jpg',
+                  labelText: 'Image (optional)',
+                  hintText:
+                      'https://example.com/product.jpg or pick from device',
                 ),
-                validator: (value) {
-                  final url = value?.trim() ?? '';
-                  if (url.isEmpty) return null;
-                  if (url.length > 2048) {
-                    return 'Image URL must be 2048 characters or fewer.';
-                  }
-                  final uri = Uri.tryParse(url);
-                  if (uri == null ||
-                      (uri.scheme != 'http' && uri.scheme != 'https') ||
-                      uri.host.isEmpty) {
-                    return 'Enter a valid http or https image URL.';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 16),
               TextFormField(

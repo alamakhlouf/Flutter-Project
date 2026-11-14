@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_routes.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/widgets/image_renderer.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
 import '../../auth/models/auth_user.dart';
@@ -390,31 +391,18 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           ? Image.network(
               s.imageUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _imagePlaceholder(s.category),
+              errorBuilder: (_, _, _) => _imagePlaceholder(s.category, s.imageUrl!),
             )
-          : _imagePlaceholder(s.category),
+          : _imagePlaceholder(s.category, s.imageUrl!),
     );
   }
 
-  Widget _imagePlaceholder(String category) {
+  Widget _imagePlaceholder(String category, String imageUrl) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.handyman_outlined,
-            size: 56,
-            color: AppColors.primary.withValues(alpha: 0.4),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            category,
-            style: TextStyle(
-              color: AppColors.primary.withValues(alpha: 0.6),
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          _ServiceHeaderImage(imageUrl: imageUrl, category: category),
         ],
       ),
     );
@@ -576,3 +564,98 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
   }
 }
+
+
+class _ServiceHeaderImage extends StatelessWidget {
+  const _ServiceHeaderImage({required this.imageUrl, required this.category});
+
+  final String? imageUrl;
+  final String category;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 150,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ImageRenderer(
+            imageUrl: imageUrl,
+            placeholder: _placeholder(category),
+            fit: BoxFit.cover,
+          ),
+          Align(
+            alignment: Alignment.topLeft,
+            child: Container(
+              margin: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 9,
+                vertical: 5,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.surface.withValues(alpha: 0.94),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                category.toUpperCase(),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _placeholder(String category) {
+    IconData icon;
+    switch (category) {
+      case ServiceCategory.cleaning:
+        icon = Icons.cleaning_services_outlined;
+        break;
+      case ServiceCategory.plumbing:
+        icon = Icons.plumbing_outlined;
+        break;
+      case ServiceCategory.electrical:
+        icon = Icons.electrical_services_outlined;
+        break;
+      case ServiceCategory.tutoring:
+        icon = Icons.school_outlined;
+        break;
+      case ServiceCategory.beauty:
+        icon = Icons.spa_outlined;
+        break;
+      case ServiceCategory.fitness:
+        icon = Icons.fitness_center_outlined;
+        break;
+      case ServiceCategory.event:
+        icon = Icons.event_outlined;
+        break;
+      case ServiceCategory.homeCare:
+        icon = Icons.home_repair_service_outlined;
+        break;
+      default:
+        icon = Icons.miscellaneous_services_outlined;
+    }
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 40,
+            color: AppColors.primary.withValues(alpha: 0.38),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

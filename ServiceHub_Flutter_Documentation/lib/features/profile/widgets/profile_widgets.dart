@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/image_renderer.dart';
 import '../../../design_system/app_colors.dart';
 
 class ProfileAvatar extends StatefulWidget {
@@ -57,35 +58,14 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
             child: url.isEmpty
                 ? _initial(context)
                 : ClipOval(
-                    child: Image.network(
-                      url,
+                    child: SizedBox(
                       width: widget.size,
                       height: widget.size,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return Semantics(
-                          label: 'Loading image',
-                          child: _circle(
-                            child: const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: AppColors.surface,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        if (!_failed) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) setState(() => _failed = true);
-                          });
-                        }
-                        return _initial(context);
-                      },
+                      child: ImageRenderer(
+                        imageUrl: url,
+                        placeholder: _initial(context),
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
           ),

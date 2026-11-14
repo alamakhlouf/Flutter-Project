@@ -26,10 +26,14 @@ public final class ApiDtos {
     public record ServiceDto(UUID id, UUID providerId, String providerName, String title, String description,
                              String category, BigDecimal price, String imageUrl, boolean active, Instant createdAt, boolean favorite) { }
     public record InventoryRequest(@NotBlank String name, String description, @Min(0) int quantity,
-                                   @NotBlank String unit, @Min(0) Integer lowStockThreshold) { }
+                                   @NotBlank String unit, String imageUrl,
+                                   @Min(0) Integer lowStockThreshold, String catalogCategory,
+                                   @DecimalMin("0.00") BigDecimal catalogPrice) { }
     public record QuantityUpdate(@Min(0) int quantity) { }
     public record InventoryDto(UUID id, UUID providerId, String name, String description, int quantity, String unit,
-                               Integer lowStockThreshold, String stockStatus, Instant updatedAt) { }
+                               String imageUrl,
+                               Integer lowStockThreshold, String stockStatus, Instant updatedAt,
+                               String catalogCategory, BigDecimal catalogPrice) { }
     public record BookingRequest(@NotNull UUID serviceId, @NotNull Instant preferredDateTime, String description) { }
     public record StatusUpdate(@NotNull Enum<?> status) { }
     public record BookingStatusUpdate(@NotNull BookingStatus status) { }
@@ -37,7 +41,7 @@ public final class ApiDtos {
     public record BookingDto(UUID id, UUID customerId, String customerName, UUID providerId, UUID serviceId, String serviceTitle,
                              BigDecimal price, String description, Instant preferredDateTime, BookingStatus status, Instant createdAt) { }
     public record ProductRequest(@NotBlank String name, String description, @NotBlank String category,
-                                 @NotNull @DecimalMin("0.00") BigDecimal price, @Size(max = 2048) String imageUrl,
+                                 @NotNull @DecimalMin("0.00") BigDecimal price, String imageUrl,
                                  @Min(0) Integer quantityAvailable, boolean available) { }
     public record ProductAvailability(@NotNull Boolean available) { }
     public record ProductDto(UUID id, UUID supplierId, String supplierName, String name, String description,

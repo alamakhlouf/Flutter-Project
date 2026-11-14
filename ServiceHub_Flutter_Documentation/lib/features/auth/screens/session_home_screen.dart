@@ -96,7 +96,8 @@ class SessionHomeScreen extends StatelessWidget {
                 builder: (_) => ProductOrderDetailsScreen(
                   order: order,
                   isSupplier:
-                      AuthScope.of(context).user.role == UserRole.supplier,
+                      AuthScope.of(context).user.role == UserRole.supplier ||
+                      AuthScope.of(context).user.role == UserRole.provider,
                   orderService: ProductOrderService(
                     api: AuthScope.of(context).api,
                   ),

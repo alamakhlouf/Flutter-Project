@@ -14,7 +14,7 @@ public final class DtoMapper {
     public static ServiceDto service(ServiceListing s) { return service(s, false); }
     public static InventoryDto inventory(InventoryItem i) {
         String state = i.getQuantity() == 0 ? "OUT_OF_STOCK" : i.getLowStockThreshold() != null && i.getQuantity() <= i.getLowStockThreshold() ? "LOW_STOCK" : "IN_STOCK";
-        return new InventoryDto(i.getId(), i.getProvider().getId(), i.getName(), i.getDescription(), i.getQuantity(), i.getUnit(), i.getLowStockThreshold(), state, i.getUpdatedAt());
+        return new InventoryDto(i.getId(), i.getProvider().getId(), i.getName(), i.getDescription(), i.getQuantity(), i.getUnit(), i.getImageUrl(), i.getLowStockThreshold(), state, i.getUpdatedAt(), i.getCatalogCategory(), i.getCatalogPrice());
     }
     public static BookingDto booking(Booking b) { return new BookingDto(b.getId(), b.getCustomer().getId(), b.getCustomer().getFullName(), b.getProvider().getId(), b.getService().getId(), b.getServiceTitleSnapshot(), b.getPriceSnapshot(), b.getDescription(), b.getPreferredDateTime(), b.getStatus(), b.getCreatedAt()); }
     public static ProductDto product(SupplierProduct p, boolean favorite) {

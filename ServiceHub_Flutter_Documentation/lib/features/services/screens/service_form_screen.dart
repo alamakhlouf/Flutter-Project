@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/image_picker_helper.dart';
 import '../../../core/utils/validators.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
@@ -300,15 +301,33 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('Image URL', style: theme.textTheme.labelMedium),
+              Text('Image', style: theme.textTheme.labelMedium),
               const SizedBox(height: 6),
+              OutlinedButton.icon(
+                onPressed: _submitting
+                    ? null
+                    : () async {
+                        final base64Image =
+                            await ImagePickerHelper.pickAndConvertToBase64(
+                          context,
+                        );
+                        if (base64Image != null && mounted) {
+                          setState(() {
+                            _imageUrlController.text = base64Image;
+                          });
+                        }
+                      },
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Pick Image from Device'),
+              ),
+              const SizedBox(height: 12),
               TextFormField(
                 key: ServicesKeys.formImageUrl,
                 controller: _imageUrlController,
                 validator: Validators.imageUrl,
                 keyboardType: TextInputType.url,
                 decoration: const InputDecoration(
-                  hintText: 'https://example.com/image.png',
+                  hintText: 'https://example.com/image.png or pick from device',
                   prefixIcon: Icon(Icons.image_outlined),
                 ),
               ),

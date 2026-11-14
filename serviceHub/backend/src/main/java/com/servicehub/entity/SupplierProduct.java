@@ -9,7 +9,9 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-@Entity @Getter @Setter
+@Entity
+@Table(name = "products")
+@Getter @Setter
 public class SupplierProduct extends AuditedEntity {
     @Id @GeneratedValue(strategy = GenerationType.UUID) private UUID id;
     @ManyToOne(optional = false, fetch = FetchType.LAZY) private User supplier;
@@ -17,7 +19,10 @@ public class SupplierProduct extends AuditedEntity {
     @Column(length = 3000) private String description;
     @NotBlank @Column(nullable = false) private String category;
     @DecimalMin("0.00") @Column(nullable = false, precision = 12, scale = 2) private BigDecimal price;
-    @Column(length = 2048) private String imageUrl;
+    @Column(columnDefinition = "LONGTEXT") private String imageUrl;
     @Min(0) private Integer quantityAvailable;
     @Column(nullable = false) private boolean available = true;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inventory_item_id", unique = true)
+    private InventoryItem inventoryItem;
 }

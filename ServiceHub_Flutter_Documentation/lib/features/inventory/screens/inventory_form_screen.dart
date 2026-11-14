@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/image_picker_helper.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
 import '../inventory_keys.dart';
@@ -31,14 +32,18 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
   late final TextEditingController _quantityController;
   late final TextEditingController _unitController;
   late final TextEditingController _thresholdController;
+  late final TextEditingController _catalogCategoryController;
+  late final TextEditingController _catalogPriceController;
 
   var _submitting = false;
   String? _errorMessage;
+  String? _imageUrl;
 
   @override
   void initState() {
     super.initState();
     _existingItem = widget.item;
+    _imageUrl = _existingItem?.imageUrl;
 
     _nameController = TextEditingController(text: _existingItem?.name ?? '');
     _descriptionController =
@@ -47,6 +52,12 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
       text: _existingItem != null ? _existingItem!.quantity.toString() : '0',
     );
     _unitController = TextEditingController(text: _existingItem?.unit ?? 'units');
+    _catalogCategoryController = TextEditingController(
+      text: _existingItem?.catalogCategory ?? '',
+    );
+    _catalogPriceController = TextEditingController(
+      text: _existingItem?.catalogPrice?.toString() ?? '',
+    );
     _thresholdController = TextEditingController(
       text: _existingItem?.lowStockThreshold != null
           ? _existingItem!.lowStockThreshold.toString()
@@ -67,7 +78,10 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
       _descriptionController.text = args.description;
       _quantityController.text = args.quantity.toString();
       _unitController.text = args.unit;
+      _catalogCategoryController.text = args.catalogCategory ?? '';
+      _catalogPriceController.text = args.catalogPrice?.toString() ?? '';
       _thresholdController.text = args.lowStockThreshold?.toString() ?? '';
+      _imageUrl = args.imageUrl;
     }
   }
 
@@ -78,6 +92,8 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
     _quantityController.dispose();
     _unitController.dispose();
     _thresholdController.dispose();
+    _catalogCategoryController.dispose();
+    _catalogPriceController.dispose();
     super.dispose();
   }
 
@@ -141,6 +157,7 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
     final unit = _unitController.text.trim();
     final thresholdText = _thresholdController.text.trim();
     final threshold = thresholdText.isEmpty ? null : int.parse(thresholdText);
+    final catalogPrice = double.parse(_catalogPriceController.text.trim());
 
     try {
       if (_existingItem == null) {
@@ -149,6 +166,9 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
           description: description,
           quantity: quantity,
           unit: unit.isEmpty ? 'units' : unit,
+          catalogCategory: _catalogCategoryController.text,
+          catalogPrice: catalogPrice,
+          imageUrl: _imageUrl,
           lowStockThreshold: threshold,
         );
       } else {
@@ -158,6 +178,9 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
           description: description,
           quantity: quantity,
           unit: unit.isEmpty ? 'units' : unit,
+          catalogCategory: _catalogCategoryController.text,
+          catalogPrice: catalogPrice,
+          imageUrl: _imageUrl,
           lowStockThreshold: threshold,
         );
       }
@@ -221,6 +244,39 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                 ),
                 const SizedBox(height: 20),
               ],
+              Text(
+                'Product details (shown in the Products catalog)',
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 12),
+              Text('Category *', style: theme.textTheme.labelMedium),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _catalogCategoryController,
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Enter a product category.'
+                    : null,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(hintText: 'e.g. Cleaning'),
+              ),
+              const SizedBox(height: 16),
+              Text('Price (USD) *', style: theme.textTheme.labelMedium),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _catalogPriceController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                validator: (value) {
+                  final price = double.tryParse(value?.trim() ?? '');
+                  if (price == null || price < 0) {
+                    return 'Enter a valid non-negative price.';
+                  }
+                  return null;
+                },
+                decoration: const InputDecoration(hintText: '0.00'),
+              ),
+              const SizedBox(height: 16),
               Text('Name *', style: theme.textTheme.labelMedium),
               const SizedBox(height: 6),
               TextFormField(
@@ -278,6 +334,24 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   hintText: 'Optional threshold for low stock warnings',
+                ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _submitting
+                    ? null
+                    : () async {
+                        final image =
+                            await ImagePickerHelper.pickAndConvertToBase64(
+                              context,
+                            );
+                        if (image != null && mounted) {
+                          setState(() => _imageUrl = image);
+                        }
+                      },
+                icon: const Icon(Icons.photo_library_outlined),
+                label: Text(
+                  _imageUrl == null ? 'Pick Image from Device' : 'Change Image',
                 ),
               ),
               const SizedBox(height: 24),

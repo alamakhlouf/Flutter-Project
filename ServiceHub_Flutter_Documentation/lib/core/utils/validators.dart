@@ -43,6 +43,9 @@ class Validators {
   static String? imageUrl(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return null;
+    if (text.startsWith('data:image/') || text.contains('base64,')) {
+      return null;
+    }
     final uri = Uri.tryParse(text);
     final supported =
         uri != null &&

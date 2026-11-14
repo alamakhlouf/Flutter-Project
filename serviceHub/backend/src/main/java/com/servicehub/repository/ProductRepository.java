@@ -23,4 +23,5 @@ public interface ProductRepository extends JpaRepository<SupplierProduct, UUID> 
             Pageable pageable);
 
     Page<SupplierProduct> findBySupplierId(UUID supplierId, Pageable pageable);
+    java.util.Optional<SupplierProduct> findByInventoryItemId(UUID inventoryItemId);
 }

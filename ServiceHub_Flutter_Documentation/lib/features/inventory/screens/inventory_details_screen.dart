@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_routes.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/widgets/image_renderer.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
 import '../../auth/models/auth_user.dart';
@@ -209,13 +210,6 @@ class _InventoryDetailsScreenState extends State<InventoryDetailsScreen> {
         : product.quantityAvailable != null && product.quantityAvailable! < 5
         ? AppColors.warning
         : AppColors.success;
-    final imageUrl = product.imageUrl?.trim();
-    final imageUri = imageUrl == null ? null : Uri.tryParse(imageUrl);
-    final validImageUrl =
-        imageUri != null &&
-        (imageUri.scheme == 'http' || imageUri.scheme == 'https') &&
-        imageUri.host.isNotEmpty;
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
@@ -234,13 +228,11 @@ class _InventoryDetailsScreenState extends State<InventoryDetailsScreen> {
               SizedBox(
                 height: 190,
                 width: double.infinity,
-                child: validImageUrl
-                    ? Image.network(
-                        imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _imagePlaceholder(),
-                      )
-                    : _imagePlaceholder(),
+                child: ImageRenderer(
+                  imageUrl: product.imageUrl,
+                  placeholder: _imagePlaceholder(),
+                  fit: BoxFit.cover,
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -384,85 +376,105 @@ class _InventoryDetailsScreenState extends State<InventoryDetailsScreen> {
           ),
         ],
         const SizedBox(height: 16),
-        Card(
-          margin: EdgeInsets.zero,
-          color: AppColors.surface,
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+        _buildSupplierCard(theme, product, isAdmin),
+      ],
+    );
+  }
+
+  Widget _buildSupplierCard(
+    ThemeData theme,
+    InventoryProduct product,
+    bool isAdmin,
+  ) {
+    final name = product.supplierName.trim().isEmpty
+        ? 'Supplier'
+        : product.supplierName;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Supplier Information',
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
               children: [
-                Text(
-                  'Supplier Information',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: AppColors.neutral,
+                  foregroundColor: AppColors.primary,
+                  child: Text(
+                    name[0].toUpperCase(),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const CircleAvatar(
-                      backgroundColor: AppColors.neutral,
-                      foregroundColor: AppColors.primary,
-                      child: Icon(Icons.storefront_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        product.supplierName,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (!isAdmin) ...[
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () => Navigator.of(context).pushNamed(
-                          AppRoutes.createReport,
-                          arguments: ReportTarget(
-                            type: 'PRODUCT',
-                            id: product.id,
-                            title: 'Report product',
-                            subtitle: product.name,
-                          ),
-                        ),
-                        icon: const Icon(Icons.flag_outlined),
-                        label: const Text('Report product'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: () => Navigator.of(context).pushNamed(
-                          AppRoutes.createReport,
-                          arguments: ReportTarget(
-                            type: 'SUPPLIER',
-                            id: product.supplierId,
-                            title: 'Report supplier',
-                            subtitle: product.supplierName,
-                          ),
-                        ),
-                        icon: const Icon(Icons.storefront_outlined),
-                        label: const Text('Report supplier'),
-                      ),
-                    ],
                   ),
-                ],
+                ),
               ],
             ),
-          ),
+            if (!isAdmin) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).pushNamed(
+                      AppRoutes.createReport,
+                      arguments: ReportTarget(
+                        type: 'PRODUCT',
+                        id: product.id,
+                        title: 'Report product',
+                        subtitle: product.name,
+                      ),
+                    ),
+                    icon: const Icon(Icons.flag_outlined),
+                    label: const Text('Report product'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).pushNamed(
+                      AppRoutes.createReport,
+                      arguments: ReportTarget(
+                        type: 'SUPPLIER',
+                        id: product.supplierId,
+                        title: 'Report supplier',
+                        subtitle: product.supplierName,
+                      ),
+                    ),
+                    icon: const Icon(Icons.storefront_outlined),
+                    label: const Text('Report supplier'),
+                  ),
+                ],
+              ),
+            ],
+          ],
         ),
-      ],
+      ),
     );
   }
 

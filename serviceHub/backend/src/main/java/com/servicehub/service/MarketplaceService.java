@@ -148,19 +148,45 @@ public class MarketplaceService {
         InventoryItem i=require(inventory.findById(id),"Inventory item"); owner(i.getProvider(),actor(Role.PROVIDER)); return DtoMapper.inventory(i);
     }
     @Transactional public InventoryDto createInventory(InventoryRequest r) {
-        InventoryItem i=new InventoryItem(); i.setProvider(actor(Role.PROVIDER)); fillInventory(r,i); return DtoMapper.inventory(inventory.save(i));
+        InventoryItem i=new InventoryItem(); i.setProvider(actor(Role.PROVIDER)); fillInventory(r,i); i=inventory.save(i); syncCatalogProduct(i); return DtoMapper.inventory(i);
     }
     @Transactional public InventoryDto updateInventory(UUID id, InventoryRequest r) {
-        InventoryItem i=require(inventory.findById(id),"Inventory item"); owner(i.getProvider(),actor(Role.PROVIDER)); fillInventory(r,i); return DtoMapper.inventory(i);
+        InventoryItem i=require(inventory.findById(id),"Inventory item"); owner(i.getProvider(),actor(Role.PROVIDER)); fillInventory(r,i); syncCatalogProduct(i); return DtoMapper.inventory(i);
     }
     @Transactional public InventoryDto changeQuantity(UUID id, QuantityUpdate r) {
-        InventoryItem i=require(inventory.findById(id),"Inventory item"); owner(i.getProvider(),actor(Role.PROVIDER)); i.setQuantity(r.quantity()); return DtoMapper.inventory(i);
+        InventoryItem i=require(inventory.findById(id),"Inventory item"); owner(i.getProvider(),actor(Role.PROVIDER)); i.setQuantity(r.quantity());
+        products.findByInventoryItemId(i.getId()).ifPresent(p -> { p.setQuantityAvailable(r.quantity()); p.setAvailable(r.quantity() > 0); });
+        return DtoMapper.inventory(i);
     }
     @Transactional public void deleteInventory(UUID id) {
-        InventoryItem i=require(inventory.findById(id),"Inventory item"); owner(i.getProvider(),actor(Role.PROVIDER)); inventory.delete(i);
+        InventoryItem i=require(inventory.findById(id),"Inventory item"); owner(i.getProvider(),actor(Role.PROVIDER));
+        products.findByInventoryItemId(i.getId()).ifPresent(p -> { p.setAvailable(false); p.setInventoryItem(null); });
+        inventory.delete(i);
     }
     private void fillInventory(InventoryRequest r, InventoryItem i) {
-        i.setName(r.name().trim()); i.setDescription(r.description()); i.setQuantity(r.quantity()); i.setUnit(r.unit().trim()); i.setLowStockThreshold(r.lowStockThreshold());
+        if ((r.catalogCategory() == null) != (r.catalogPrice() == null)
+                || (r.catalogCategory() != null && r.catalogCategory().isBlank())) {
+            throw ApiException.invalid("Catalog category and price must both be provided.");
+        }
+        i.setName(r.name().trim()); i.setDescription(r.description()); i.setImageUrl(r.imageUrl()); i.setQuantity(r.quantity()); i.setUnit(r.unit().trim()); i.setLowStockThreshold(r.lowStockThreshold());
+        i.setCatalogCategory(r.catalogCategory()); i.setCatalogPrice(r.catalogPrice());
+    }
+    private void syncCatalogProduct(InventoryItem item) {
+        if (item.getCatalogCategory() == null || item.getCatalogCategory().isBlank() || item.getCatalogPrice() == null) {
+            products.findByInventoryItemId(item.getId()).ifPresent(p -> p.setAvailable(false));
+            return;
+        }
+        SupplierProduct product = products.findByInventoryItemId(item.getId()).orElseGet(SupplierProduct::new);
+        product.setInventoryItem(item);
+        product.setSupplier(item.getProvider());
+        product.setName(item.getName());
+        product.setDescription(item.getDescription());
+        product.setCategory(item.getCatalogCategory().trim());
+        product.setPrice(item.getCatalogPrice());
+        product.setImageUrl(item.getImageUrl());
+        product.setQuantityAvailable(item.getQuantity());
+        product.setAvailable(item.getQuantity() > 0);
+        products.save(product);
     }
 
     @Transactional public BookingDto createBooking(BookingRequest r) {
@@ -452,7 +478,10 @@ public class MarketplaceService {
             int q=quantities.get(p.getId());
             if (!p.isAvailable() || (p.getQuantityAvailable()!=null && p.getQuantityAvailable()<q)) throw ApiException.conflict("Product is unavailable or has insufficient stock: " + p.getName());
             BigDecimal lineTotal=p.getPrice().multiply(BigDecimal.valueOf(q)); total=total.add(lineTotal);
-            if (p.getQuantityAvailable()!=null) p.setQuantityAvailable(p.getQuantityAvailable()-q);
+            if (p.getQuantityAvailable()!=null) {
+                p.setQuantityAvailable(p.getQuantityAvailable()-q);
+                if (p.getInventoryItem()!=null) p.getInventoryItem().setQuantity(p.getQuantityAvailable());
+            }
             OrderItem item=new OrderItem(); item.setOrder(order); item.setProduct(p); item.setProductNameSnapshot(p.getName());
             item.setUnitPriceSnapshot(p.getPrice()); item.setQuantity(q); item.setLineTotal(lineTotal); order.getItems().add(item);
         }
@@ -469,7 +498,7 @@ public class MarketplaceService {
         return DtoMapper.order(o);
     }
     @Transactional public OrderDto orderStatus(UUID id,OrderStatus status) {
-        ProductOrder o=require(orders.findById(id),"Order"); owner(o.getSupplier(),actor(Role.SUPPLIER));
+        ProductOrder o=require(orders.findById(id),"Order"); owner(o.getSupplier(),actor(Role.SUPPLIER,Role.PROVIDER));
         if (!orderTransition(o.getStatus(),status)) throw ApiException.invalid("Invalid order status transition");
         o.setStatus(status); if (status==OrderStatus.REJECTED) restoreStock(o);
         notify(o.getCustomer(),"Order updated","Your order is now " + status,"ORDER","Order",o.getId()); return DtoMapper.order(o);
@@ -482,8 +511,13 @@ public class MarketplaceService {
     private void restoreStock(ProductOrder o) {
         o.getItems().stream().sorted(Comparator.comparing(i->i.getProduct().getId().toString())).forEach(item -> {
             SupplierProduct product=require(productLocks.lockProduct(item.getProduct().getId()),"Product");
-            if (product.getQuantityAvailable()!=null)
-                product.getQuantityAvailable();
+            if (product.getQuantityAvailable()!=null) {
+                product.setQuantityAvailable(product.getQuantityAvailable()+item.getQuantity());
+                if (product.getInventoryItem()!=null) {
+                    product.getInventoryItem().setQuantity(product.getQuantityAvailable());
+                    product.setAvailable(product.getQuantityAvailable()>0);
+                }
+            }
         });
     }
     private boolean orderTransition(OrderStatus from,OrderStatus to) {

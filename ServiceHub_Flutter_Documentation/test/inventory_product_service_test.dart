@@ -414,6 +414,42 @@ void main() {
     }
   });
 
+  testWidgets('product details show the item image and supplier card', (
+    tester,
+  ) async {
+    final service = serviceFor((_) async => http.Response('{}', 200));
+    final item = InventoryProduct.fromJson({
+      ...product,
+      'imageUrl':
+          'data:image/png;base64,'
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l3sAAAAASUVORK5CYII=',
+    });
+
+    await tester.pumpWidget(
+      AuthScope(
+        user: const AuthUser(
+          id: 'customer-1',
+          fullName: 'Customer',
+          email: 'customer@example.com',
+          role: UserRole.customer,
+        ),
+        logout: () async {},
+        updateUser: (_) {},
+        api: service.api,
+        child: MaterialApp(
+          home: InventoryDetailsScreen(product: item, productService: service),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Olive Oil'), findsOneWidget);
+    expect(find.text('Supplier Information'), findsOneWidget);
+    expect(find.text('Local Supplier'), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('buying inventory creates an order for the selected quantity', () async {
     late http.Request sent;
     final service = serviceFor((request) async {

@@ -68,7 +68,7 @@ class _ProductOrdersScreenState extends State<ProductOrdersScreen> {
         settings: const RouteSettings(name: AppRoutes.productOrderDetails),
         builder: (_) => ProductOrderDetailsScreen(
           order: order,
-          isSupplier: AuthScope.of(context).user.role == UserRole.supplier,
+          isSupplier: _isSeller(AuthScope.of(context).user.role),
           orderService: _service!,
         ),
       ),
@@ -88,7 +88,7 @@ class _ProductOrdersScreenState extends State<ProductOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isSupplier = AuthScope.of(context).user.role == UserRole.supplier;
+    final isSupplier = _isSeller(AuthScope.of(context).user.role);
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -132,6 +132,9 @@ class _ProductOrdersScreenState extends State<ProductOrdersScreen> {
     );
   }
 }
+
+bool _isSeller(UserRole role) =>
+    role == UserRole.supplier || role == UserRole.provider;
 
 class ProductOrderDetailsScreen extends StatefulWidget {
   const ProductOrderDetailsScreen({
