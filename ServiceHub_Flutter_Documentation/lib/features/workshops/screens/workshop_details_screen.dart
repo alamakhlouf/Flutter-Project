@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/app_routes.dart';
@@ -72,7 +71,8 @@ class _WorkshopDetailsScreenState extends State<WorkshopDetailsScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _loadRegistrationStatus();
-        if (user.role == UserRole.provider && _workshop.organizerId == user.id) {
+        if (user.role == UserRole.provider &&
+            _workshop.organizerId == user.id) {
           _loadGoogleStatus();
         }
       }
@@ -123,46 +123,18 @@ class _WorkshopDetailsScreenState extends State<WorkshopDetailsScreen>
   Future<void> _connectGoogle() async {
     setState(() => _busy = true);
     try {
-      final googleSignIn = GoogleSignIn(
-        scopes: [
-          'email',
-          'profile',
-          'https://www.googleapis.com/auth/calendar',
-          'https://www.googleapis.com/auth/calendar.events',
-        ],
-        serverClientId:
-            '721746615689-31o7qo4p1rsu2s6ku9ako4galdjs064p.apps.googleusercontent.com',
+      final authUrl = await _service.getGoogleConnectUrl();
+      final launched = await launchUrl(
+        Uri.parse(authUrl),
+        mode: LaunchMode.externalApplication,
       );
-
-      final account = await googleSignIn.signIn();
-      if (account == null) {
-        if (mounted) setState(() => _busy = false);
-        return;
-      }
-
-      final auth = await account.authentication;
-      final accessToken = auth.accessToken;
-      if (accessToken == null || accessToken.isEmpty) {
-        throw ApiException(
-          message: 'Could not retrieve Google Calendar access token.',
-        );
-      }
-
-      final status = await _service.connectGoogleToken(
-        accessToken: accessToken,
-        email: account.email,
-      );
-
+      if (!launched) throw Exception('Could not open Google authorization');
       if (!mounted) return;
-      setState(() {
-        _googleConnected = status['connected'] == true;
-        _googleEmail = status['googleEmail']?.toString() ?? account.email;
-      });
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Google Calendar connected successfully!'),
-          backgroundColor: AppColors.success,
+          content: Text(
+            'Complete Google authorization, then return to ServiceHub.',
+          ),
         ),
       );
     } on ApiException catch (error) {
@@ -191,7 +163,10 @@ class _WorkshopDetailsScreenState extends State<WorkshopDetailsScreen>
   Future<void> _launchMeetingUrl(String url) async {
     final uri = Uri.parse(url);
     try {
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
       if (!launched) throw Exception('Launch returned false');
     } catch (_) {
       await Clipboard.setData(ClipboardData(text: url));
@@ -212,13 +187,18 @@ class _WorkshopDetailsScreenState extends State<WorkshopDetailsScreen>
         _busy = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Google Meet link generated successfully!')),
+        const SnackBar(
+          content: Text('Google Meet link generated successfully!'),
+        ),
       );
     } on ApiException catch (error) {
       if (mounted) {
         setState(() => _busy = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text(error.message),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -278,7 +258,8 @@ class _WorkshopDetailsScreenState extends State<WorkshopDetailsScreen>
     final user = AuthScope.of(context).user;
     final isAdmin = user.role == UserRole.admin;
     final workshop = _workshop;
-    final isOrganizer = user.role == UserRole.provider && workshop.organizerId == user.id;
+    final isOrganizer =
+        user.role == UserRole.provider && workshop.organizerId == user.id;
     final hasMeetingAccess = isOrganizer || _isRegistered;
 
     final canRegister =
@@ -339,8 +320,12 @@ class _WorkshopDetailsScreenState extends State<WorkshopDetailsScreen>
                             ),
                           ),
                           _WorkshopStatusBadge(
-                            label: workshop.isOnline ? 'Online (Meet)' : 'In-Person',
-                            color: workshop.isOnline ? AppColors.primary : AppColors.textSecondary,
+                            label: workshop.isOnline
+                                ? 'Online (Meet)'
+                                : 'In-Person',
+                            color: workshop.isOnline
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
                           ),
                           const SizedBox(width: 8),
                           _WorkshopStatusBadge(
@@ -381,9 +366,13 @@ class _WorkshopDetailsScreenState extends State<WorkshopDetailsScreen>
                       ),
                       const SizedBox(height: 10),
                       _WorkshopDetailRow(
-                        icon: workshop.isOnline ? Icons.video_call_outlined : Icons.location_on_outlined,
+                        icon: workshop.isOnline
+                            ? Icons.video_call_outlined
+                            : Icons.location_on_outlined,
                         title: workshop.isOnline ? 'Format' : 'Location',
-                        value: workshop.isOnline ? 'Google Meet Online' : workshop.location,
+                        value: workshop.isOnline
+                            ? 'Google Meet Online'
+                            : workshop.location,
                       ),
                       const SizedBox(height: 10),
                       _WorkshopDetailRow(
@@ -408,26 +397,34 @@ class _WorkshopDetailsScreenState extends State<WorkshopDetailsScreen>
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.2),
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.video_camera_front, color: AppColors.primary, size: 20),
+                                  const Icon(
+                                    Icons.video_camera_front,
+                                    color: AppColors.primary,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'Google Meet Link',
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              if (workshop.meetingUrl != null && workshop.meetingUrl!.isNotEmpty) ...[
+                              if (workshop.meetingUrl != null &&
+                                  workshop.meetingUrl!.isNotEmpty) ...[
                                 SelectableText(
                                   workshop.meetingUrl!,
                                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -440,12 +437,17 @@ class _WorkshopDetailsScreenState extends State<WorkshopDetailsScreen>
                                   children: [
                                     Expanded(
                                       child: ElevatedButton.icon(
-                                        onPressed: () => _launchMeetingUrl(workshop.meetingUrl!),
+                                        onPressed: () => _launchMeetingUrl(
+                                          workshop.meetingUrl!,
+                                        ),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: AppColors.primary,
                                           foregroundColor: Colors.white,
                                         ),
-                                        icon: const Icon(Icons.videocam_rounded, size: 16),
+                                        icon: const Icon(
+                                          Icons.videocam_rounded,
+                                          size: 16,
+                                        ),
                                         label: const Text('Join Meeting'),
                                       ),
                                     ),
@@ -453,10 +455,19 @@ class _WorkshopDetailsScreenState extends State<WorkshopDetailsScreen>
                                     Expanded(
                                       child: OutlinedButton.icon(
                                         onPressed: () {
-                                          Clipboard.setData(ClipboardData(text: workshop.meetingUrl!));
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Meeting link copied to clipboard!')),
+                                          Clipboard.setData(
+                                            ClipboardData(
+                                              text: workshop.meetingUrl!,
+                                            ),
                                           );
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Meeting link copied to clipboard!',
+                                                  ),
+                                                ),
+                                              );
                                         },
                                         icon: const Icon(Icons.copy, size: 16),
                                         label: const Text('Copy Link'),
@@ -478,36 +489,58 @@ class _WorkshopDetailsScreenState extends State<WorkshopDetailsScreen>
                                   if (!_googleConnected) ...[
                                     Text(
                                       'Google account is not connected.',
-                                      style: theme.textTheme.bodySmall?.copyWith(color: AppColors.error),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(color: AppColors.error),
                                     ),
                                     const SizedBox(height: 6),
                                     Row(
                                       children: [
                                         Expanded(
                                           child: OutlinedButton.icon(
-                                            onPressed: _busy ? null : _connectGoogle,
+                                            onPressed: _busy
+                                                ? null
+                                                : _connectGoogle,
                                             icon: const Icon(Icons.link),
-                                            label: const Text('Connect Google Account'),
+                                            label: const Text(
+                                              'Connect Google Account',
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 8),
                                         IconButton(
                                           tooltip: 'Refresh Connection Status',
                                           onPressed: _loadGoogleStatus,
-                                          icon: const Icon(Icons.refresh_rounded, size: 20),
+                                          icon: const Icon(
+                                            Icons.refresh_rounded,
+                                            size: 20,
+                                          ),
                                         ),
                                       ],
                                     ),
                                   ] else ...[
                                     Text(
                                       'Connected as: ${_googleEmail ?? 'Google Account'}',
-                                      style: theme.textTheme.bodySmall?.copyWith(color: AppColors.success),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(color: AppColors.success),
                                     ),
                                     const SizedBox(height: 6),
+                                    OutlinedButton.icon(
+                                      onPressed: _busy ? null : _connectGoogle,
+                                      icon: const Icon(Icons.link),
+                                      label: const Text(
+                                        'Reconnect Google Account',
+                                      ),
+                                    ),
                                     FilledButton.icon(
-                                      onPressed: _busy ? null : _generateMeeting,
+                                      onPressed: _busy
+                                          ? null
+                                          : _generateMeeting,
                                       icon: const Icon(Icons.add_box_outlined),
-                                      label: Text(_busy ? 'Generating...' : 'Generate Google Meet Link'),
+                                      label: Text(
+                                        _busy
+                                            ? 'Generating...'
+                                            : 'Generate Google Meet Link',
+                                      ),
                                     ),
                                   ],
                                 ],
@@ -521,7 +554,8 @@ class _WorkshopDetailsScreenState extends State<WorkshopDetailsScreen>
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
-                          onPressed: isAdmin || isOrganizer || _isRegistered || _busy
+                          onPressed:
+                              isAdmin || isOrganizer || _isRegistered || _busy
                               ? null
                               : _registrationCheckFailed
                               ? _loadRegistrationStatus

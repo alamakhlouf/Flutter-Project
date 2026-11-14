@@ -3,6 +3,7 @@ package com.servicehub.service;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
@@ -203,6 +204,14 @@ public class GoogleCalendarService {
 
         } catch (ApiException e) {
             throw e;
+        } catch (GoogleJsonResponseException e) {
+            if (e.getStatusCode() == HttpStatus.UNAUTHORIZED.value()) {
+                log.warn("Google rejected the Calendar credentials for workshop {}", workshop.getId());
+                throw new ApiException(HttpStatus.UNAUTHORIZED,
+                        "Google Calendar authorization is invalid or expired. Please reconnect your Google account.");
+            }
+            log.error("Google Calendar API rejected workshop event creation", e);
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "Google Calendar API error: " + e.getMessage());
         } catch (Exception e) {
             log.error("Failed to create Google Meet event for workshop", e);
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Google Calendar API error: " + e.getMessage());
@@ -234,20 +243,30 @@ public class GoogleCalendarService {
                     .setAccessToken(token.getAccessToken())
                     .setRefreshToken(token.getRefreshToken());
 
-            if (token.getRefreshToken() != null && (token.getTokenExpiresAt() == null || Instant.now().isAfter(token.getTokenExpiresAt().minusSeconds(60)))) {
+            boolean tokenExpired = token.getTokenExpiresAt() == null
+                    || Instant.now().isAfter(token.getTokenExpiresAt().minusSeconds(60));
+            if (tokenExpired && token.getRefreshToken() == null) {
+                throw new ApiException(HttpStatus.UNAUTHORIZED,
+                        "Google Calendar authorization expired. Please reconnect your Google account.");
+            }
+            if (tokenExpired) {
                 boolean refreshed = credential.refreshToken();
-                if (refreshed) {
-                    token.setAccessToken(credential.getAccessToken());
-                    if (credential.getExpiresInSeconds() != null) {
-                        token.setTokenExpiresAt(Instant.now().plusSeconds(credential.getExpiresInSeconds()));
-                    }
-                    tokenRepository.save(token);
+                if (!refreshed) {
+                    throw new ApiException(HttpStatus.UNAUTHORIZED,
+                            "Google Calendar authorization expired. Please reconnect your Google account.");
                 }
+                token.setAccessToken(credential.getAccessToken());
+                if (credential.getExpiresInSeconds() != null) {
+                    token.setTokenExpiresAt(Instant.now().plusSeconds(credential.getExpiresInSeconds()));
+                }
+                tokenRepository.save(token);
             }
 
             return new Calendar.Builder(httpTransport, JSON_FACTORY, credential)
                     .setApplicationName("ServiceHub")
                     .build();
+        } catch (ApiException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to build Google Calendar client", e);
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Google Calendar credentials expired or invalid. Please reconnect your account.");

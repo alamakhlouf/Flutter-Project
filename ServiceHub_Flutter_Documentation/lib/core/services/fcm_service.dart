@@ -77,10 +77,9 @@ class FcmService {
     try {
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null && token.isNotEmpty) {
-        await api.post(
+        await api.delete(
           '/api/notifications/device-token',
           body: {'token': token},
-          authenticated: true,
         );
       }
     } catch (e) {

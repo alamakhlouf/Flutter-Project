@@ -1,8 +1,10 @@
 package com.servicehub.service;
 
+import com.google.api.core.ApiFuture;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.MulticastMessage;
 import com.google.firebase.messaging.Notification;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import java.io.InputStream;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.UUID;
 
 @Service
@@ -91,7 +94,25 @@ public class FcmPushService {
             if (entityType != null) builder.putData("relatedEntityType", entityType);
             if (entityId != null) builder.putData("relatedEntityId", entityId.toString());
 
-            FirebaseMessaging.getInstance().sendEachForMulticastAsync(builder.build());
+            ApiFuture<BatchResponse> send = FirebaseMessaging.getInstance()
+                    .sendEachForMulticastAsync(builder.build());
+            send.addListener(() -> {
+                try {
+                    BatchResponse response = send.get();
+                    if (response.getFailureCount() > 0) {
+                        log.warn("FCM delivery failed for {} of {} token(s) for user {}",
+                                response.getFailureCount(), tokenStrings.size(), recipient.getId());
+                    } else {
+                        log.debug("FCM push delivered to {} token(s) for user {}",
+                                response.getSuccessCount(), recipient.getId());
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.warn("Interrupted while awaiting FCM delivery result for user {}", recipient.getId());
+                } catch (ExecutionException e) {
+                    log.error("FCM push delivery failed for user {}", recipient.getId(), e.getCause());
+                }
+            }, Runnable::run);
         } catch (Exception e) {
             log.error("Failed to send FCM push notification: {}", e.getMessage());
         }

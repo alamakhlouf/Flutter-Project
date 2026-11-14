@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/network/api_exception.dart';
 import '../../../core/utils/image_picker_helper.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/image_renderer.dart';
@@ -18,7 +17,8 @@ class WorkshopFormScreen extends StatefulWidget {
   State<WorkshopFormScreen> createState() => _WorkshopFormScreenState();
 }
 
-class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
+class _WorkshopFormScreenState extends State<WorkshopFormScreen>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   late final WorkshopService _service;
   late final TextEditingController _title,
@@ -38,11 +38,14 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final w = widget.workshop;
     _title = TextEditingController(text: w?.title);
     _description = TextEditingController(text: w?.description);
     _category = TextEditingController(text: w?.category);
-    _location = TextEditingController(text: w?.location ?? (w?.isOnline == true ? 'Google Meet (Online)' : ''));
+    _location = TextEditingController(
+      text: w?.location ?? (w?.isOnline == true ? 'Google Meet (Online)' : ''),
+    );
     _capacity = TextEditingController(text: w?.capacity.toString() ?? '10');
     _coverImageUrl = TextEditingController(text: w?.coverImageUrl ?? '');
     if (w != null) {
@@ -50,6 +53,13 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
       _end = w.endDateTime;
       _deadline = w.registrationDeadline;
       _workshopType = w.workshopType.toUpperCase();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadGoogleStatus();
     }
   }
 
@@ -74,57 +84,20 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
   Future<void> _connectGoogle() async {
     setState(() => _busy = true);
     try {
-      final googleSignIn = GoogleSignIn(
-        scopes: [
-          'email',
-          'profile',
-          'https://www.googleapis.com/auth/calendar',
-          'https://www.googleapis.com/auth/calendar.events',
-        ],
-        serverClientId:
-            '721746615689-31o7qo4p1rsu2s6ku9ako4galdjs064p.apps.googleusercontent.com',
+      final authUrl = await _service.getGoogleConnectUrl();
+      final launched = await launchUrl(
+        Uri.parse(authUrl),
+        mode: LaunchMode.externalApplication,
       );
-
-      final account = await googleSignIn.signIn();
-      if (account == null) {
-        if (mounted) setState(() => _busy = false);
-        return;
-      }
-
-      final auth = await account.authentication;
-      final accessToken = auth.accessToken;
-      if (accessToken == null || accessToken.isEmpty) {
-        throw ApiException(
-          message: 'Could not retrieve Google access token.',
-        );
-      }
-
-      final status = await _service.connectGoogleToken(
-        accessToken: accessToken,
-        email: account.email,
-      );
-
+      if (!launched) throw Exception('Could not open Google authorization');
       if (!mounted) return;
-      setState(() {
-        _googleConnected = status['connected'] == true;
-        _googleEmail = status['googleEmail']?.toString() ?? account.email;
-      });
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Google Calendar connected successfully!'),
-          backgroundColor: AppColors.success,
+          content: Text(
+            'Complete Google authorization, then return to ServiceHub.',
+          ),
         ),
       );
-    } on ApiException catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.message),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -158,7 +131,9 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
         title: _title.text,
         description: _description.text,
         category: _category.text,
-        location: _workshopType == 'ONLINE' ? 'Google Meet (Online)' : _location.text,
+        location: _workshopType == 'ONLINE'
+            ? 'Google Meet (Online)'
+            : _location.text,
         capacity: int.parse(_capacity.text),
         start: _start,
         end: _end,
@@ -222,7 +197,10 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
             decoration: const InputDecoration(labelText: 'Workshop Type'),
             items: const [
               DropdownMenuItem(value: 'IN_PERSON', child: Text('In-Person')),
-              DropdownMenuItem(value: 'ONLINE', child: Text('Online (Google Meet)')),
+              DropdownMenuItem(
+                value: 'ONLINE',
+                child: Text('Online (Google Meet)'),
+              ),
             ],
             onChanged: (val) {
               if (val != null) {
@@ -256,8 +234,12 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
                   Row(
                     children: [
                       Icon(
-                        _googleConnected ? Icons.check_circle : Icons.warning_amber_rounded,
-                        color: _googleConnected ? AppColors.success : AppColors.error,
+                        _googleConnected
+                            ? Icons.check_circle
+                            : Icons.warning_amber_rounded,
+                        color: _googleConnected
+                            ? AppColors.success
+                            : AppColors.error,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
@@ -266,9 +248,12 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
                           _googleConnected
                               ? 'Google Account Connected (${_googleEmail ?? 'Connected'})'
                               : 'Google Account Required for Google Meet',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: _googleConnected ? AppColors.success : AppColors.error,
+                                color: _googleConnected
+                                    ? AppColors.success
+                                    : AppColors.error,
                               ),
                         ),
                       ),
@@ -279,18 +264,19 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
                     _googleConnected
                         ? 'A real Google Meet link will be automatically generated and assigned upon creation.'
                         : 'Please connect your Google account before creating an online workshop.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: AppColors.textSecondary),
                   ),
-                  if (!_googleConnected) ...[
-                    const SizedBox(height: 10),
-                    OutlinedButton.icon(
-                      onPressed: _busy ? null : _connectGoogle,
-                      icon: const Icon(Icons.link, size: 18),
-                      label: const Text('Connect Google Account'),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _connectGoogle,
+                    icon: const Icon(Icons.link, size: 18),
+                    label: Text(
+                      _googleConnected
+                          ? 'Reconnect Google Account'
+                          : 'Connect Google Account',
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
@@ -300,8 +286,7 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
             _field(_title, 'Title'),
             _field(_description, 'Description', required: false, maxLines: 3),
             _field(_category, 'Category'),
-            if (_workshopType != 'ONLINE')
-              _field(_location, 'Location'),
+            if (_workshopType != 'ONLINE') _field(_location, 'Location'),
             _field(_capacity, 'Capacity', keyboard: TextInputType.number),
           ])
             Padding(padding: const EdgeInsets.only(bottom: 16), child: field),
@@ -312,9 +297,7 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
                 ? null
                 : () async {
                     final base64Image =
-                        await ImagePickerHelper.pickAndConvertToBase64(
-                      context,
-                    );
+                        await ImagePickerHelper.pickAndConvertToBase64(context);
                     if (base64Image != null && mounted) {
                       setState(() {
                         _coverImageUrl.text = base64Image;
@@ -418,6 +401,7 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     for (final c in [
       _title,
       _description,

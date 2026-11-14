@@ -68,8 +68,12 @@ class ApiClient {
     return _sendMap('PATCH', path, body: body, authenticated: authenticated);
   }
 
-  Future<void> delete(String path, {bool authenticated = true}) async {
-    await _sendMap('DELETE', path, authenticated: authenticated);
+  Future<void> delete(
+    String path, {
+    Map<String, dynamic>? body,
+    bool authenticated = true,
+  }) async {
+    await _sendMap('DELETE', path, body: body, authenticated: authenticated);
   }
 
   Future<Map<String, dynamic>> _sendMap(

@@ -102,7 +102,6 @@ class _WorkshopCatalogScreenState extends State<WorkshopCatalogScreen> {
                   Navigator.of(context)
                       .pushNamed(AppRoutes.myWorkshopRegistrations),
             ),
-          IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
         ],
       ),
       floatingActionButton: isProvider
