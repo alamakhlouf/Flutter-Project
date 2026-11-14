@@ -32,7 +32,7 @@ class ServicesService {
         ? '/api/services'
         : '/api/services?${Uri(queryParameters: queryParams).query}';
 
-    final response = await api.get(path, authenticated: false);
+    final response = await api.get(path, authenticated: true);
     return _parseList(response);
   }
 
@@ -44,8 +44,40 @@ class ServicesService {
 
   /// Fetches detailed information for a single service by ID.
   Future<ServiceModel> getServiceById(String id) async {
-    final response = await api.get('/api/services/$id', authenticated: false);
+    final response = await api.get('/api/services/$id', authenticated: true);
     return ServiceModel.fromJson(response);
+  }
+
+  Future<ServiceModel> favoriteService(String id) async {
+    final response = await api.post(
+      '/api/services/$id/favorite',
+      authenticated: true,
+    );
+    return ServiceModel.fromJson(response);
+  }
+
+  Future<void> unfavoriteService(String id) async {
+    await api.delete('/api/services/$id/favorite', authenticated: true);
+  }
+
+  Future<List<ServiceModel>> fetchFavorites() async {
+    final response = await api.getJson('/api/services/favorites', authenticated: true);
+    if (response is List) {
+      return response
+          .whereType<Map>()
+          .map((item) => ServiceModel.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    }
+    if (response is Map) {
+      final rawList = response['content'] ?? response['items'] ?? response['data'];
+      if (rawList is List) {
+        return rawList
+            .whereType<Map>()
+            .map((item) => ServiceModel.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    }
+    return <ServiceModel>[];
   }
 
   /// Creates a new service for the authenticated provider.

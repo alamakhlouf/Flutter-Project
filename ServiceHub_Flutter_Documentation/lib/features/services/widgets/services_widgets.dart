@@ -107,6 +107,7 @@ class ServiceCard extends StatelessWidget {
     this.onToggleActive,
     this.onEdit,
     this.onDelete,
+    this.onToggleFavorite,
   });
 
   final ServiceModel service;
@@ -115,6 +116,7 @@ class ServiceCard extends StatelessWidget {
   final ValueChanged<bool>? onToggleActive;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onToggleFavorite;
 
   @override
   Widget build(BuildContext context) {
@@ -132,9 +134,33 @@ class ServiceCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ServiceHeaderImage(
-              imageUrl: service.imageUrl,
-              category: service.category,
+            Stack(
+              children: [
+                _ServiceHeaderImage(
+                  imageUrl: service.imageUrl,
+                  category: service.category,
+                ),
+                if (!isProviderView && onToggleFavorite != null)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Material(
+                      color: AppColors.surface.withValues(alpha: 0.85),
+                      shape: const CircleBorder(),
+                      child: IconButton(
+                        icon: Icon(
+                          service.favorite ? Icons.favorite : Icons.favorite_border,
+                          color: service.favorite ? AppColors.error : AppColors.primary,
+                          size: 20,
+                        ),
+                        onPressed: onToggleFavorite,
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        padding: EdgeInsets.zero,
+                        tooltip: service.favorite ? 'Remove from favorites' : 'Add to favorites',
+                      ),
+                    ),
+                  ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),

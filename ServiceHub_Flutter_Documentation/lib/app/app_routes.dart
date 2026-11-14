@@ -11,6 +11,7 @@ class AppRoutes {
   static const createReport = '/reports/create';
   static const createReview = '/reviews/create';
   static const myActivity = '/activity';
+  static const notifications = '/notifications';
   static const productOrders = '/orders';
   static const productOrderDetails = '/orders/details';
   static const adminBlocked = '/admin-blocked';
@@ -22,17 +23,23 @@ class AppRoutes {
   static const myServices = '/services/my';
   static const createService = '/services/create';
   static const editService = '/services/edit';
+  static const favoriteServices = '/services/favorites';
 
   static const inventoryList = '/inventory';
   static const createInventory = '/inventory/create';
   static const editInventory = '/inventory/edit';
   static const inventoryCatalog = '/inventory/catalog';
   static const inventoryDetails = '/inventory/details';
+  static const favoriteProducts = '/products/favorites';
 
   static const bookingsList = '/bookings';
   static const createBooking = '/bookings/create';
   static const bookingDetails = '/bookings/details';
+  static const providerCalendar = '/provider/calendar';
+  static const availabilityManagement = '/provider/availability';
+
   static const workshops = '/workshops';
+  static const workshopDetails = '/workshops/details';
   static const createWorkshop = '/workshops/create';
   static const editWorkshop = '/workshops/edit';
   static const myWorkshops = '/workshops/my';

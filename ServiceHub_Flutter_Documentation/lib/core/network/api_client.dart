@@ -52,6 +52,14 @@ class ApiClient {
     return _sendMap('PUT', path, body: body, authenticated: authenticated);
   }
 
+  Future<Object?> putJson(
+    String path, {
+    Object? body,
+    bool authenticated = true,
+  }) {
+    return _send('PUT', path, body: body, authenticated: authenticated);
+  }
+
   Future<Map<String, dynamic>> patch(
     String path, {
     Map<String, dynamic>? body,
@@ -84,7 +92,7 @@ class ApiClient {
   Future<Object?> _send(
     String method,
     String path, {
-    Map<String, dynamic>? body,
+    Object? body,
     required bool authenticated,
   }) async {
     final token = authenticated ? await _readToken() : null;
@@ -148,51 +156,34 @@ class ApiClient {
   void _logResponse(String method, Uri uri, http.Response response) {
     if (!kDebugMode) return;
     debugPrint('[API] <-- $method ${_uriForLog(uri)} (${response.statusCode})');
-    if (response.body.isNotEmpty) {
+    if (response.body.isNotEmpty && response.statusCode != 401) {
       debugPrint('[API] response body: ${_bodyForLog(response.body)}');
     }
   }
 
   void _logTransportError(String method, Uri uri, String message) {
-    if (kDebugMode) {
-      debugPrint('[API] !! $method ${_uriForLog(uri)}: $message');
-    }
+    if (!kDebugMode) return;
+    debugPrint('[API] !! $method ${_uriForLog(uri)}: $message');
+  }
+
+  Uri _uri(String path) {
+    final base = Uri.parse(baseUrl);
+    final trimmedPath = path.startsWith('/') ? path.substring(1) : path;
+    return base.resolve(trimmedPath);
   }
 
   String _uriForLog(Uri uri) {
-    return uri.replace(query: uri.hasQuery ? '[REDACTED]' : null).toString();
+    if (uri.path.contains('/auth/')) {
+      return uri.replace(query: '...').toString();
+    }
+    return uri.toString();
   }
 
   String _bodyForLog(String body) {
-    try {
-      return jsonEncode(_redactSensitive(jsonDecode(body)));
-    } on FormatException {
-      return '<non-JSON body omitted>';
+    if (body.contains('password') || body.contains('token')) {
+      return '{"email":"...","password":"[REDACTED]"}';
     }
-  }
-
-  Object? _redactSensitive(Object? value) {
-    if (value is Map) {
-      return value.map(
-        (key, value) => MapEntry(
-          key,
-          key is String && _isSensitiveKey(key)
-              ? '[REDACTED]'
-              : _redactSensitive(value),
-        ),
-      );
-    }
-    if (value is List) {
-      return value.map(_redactSensitive).toList();
-    }
-    return value;
-  }
-
-  bool _isSensitiveKey(String key) {
-    return RegExp(
-      r'password|token|secret|authorization|cookie|api.?key|otp',
-      caseSensitive: false,
-    ).hasMatch(key);
+    return body;
   }
 
   Future<http.Response> _dispatch(
@@ -200,41 +191,19 @@ class ApiClient {
     Uri uri,
     Map<String, String> headers,
     String? body,
-  ) {
-    switch (method) {
-      case 'GET':
-        return _client.get(uri, headers: headers);
-      case 'POST':
-        return _client.post(uri, headers: headers, body: body);
-      case 'PUT':
-        return _client.put(uri, headers: headers, body: body);
-      case 'PATCH':
-        return _client.patch(uri, headers: headers, body: body);
-      case 'DELETE':
-        return _client.delete(uri, headers: headers);
-      default:
-        throw ArgumentError('Unsupported method $method');
+  ) async {
+    final request = http.Request(method, uri);
+    request.headers.addAll(headers);
+    if (body != null) {
+      request.body = body;
     }
-  }
-
-  Future<String?> _readToken() async {
-    final token = await readToken();
-    if (token == null || token.isEmpty) return null;
-    return token;
-  }
-
-  Uri _uri(String path) {
-    final root = baseUrl.endsWith('/')
-        ? baseUrl.substring(0, baseUrl.length - 1)
-        : baseUrl;
-    final suffix = path.startsWith('/') ? path : '/$path';
-    return Uri.parse('$root$suffix');
+    return _client.send(request).then(http.Response.fromStream);
   }
 
   Object? _decode(http.Response response) {
     try {
       return jsonDecode(response.body);
-    } on FormatException {
+    } catch (_) {
       throw ApiException(
         message: 'The server returned an unexpected response.',
         statusCode: response.statusCode,
@@ -243,27 +212,25 @@ class ApiClient {
   }
 
   ApiException _failure(http.Response response) {
-    var message = 'Something went wrong. Try again.';
-    String? path;
-    if (response.body.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map) {
-          final rawMessage = decoded['message'];
-          if (rawMessage is String && rawMessage.trim().isNotEmpty) {
-            message = rawMessage.trim();
-          }
-          final rawPath = decoded['path'];
-          if (rawPath is String) path = rawPath;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        final message = decoded['message']?.toString();
+        if (message != null && message.isNotEmpty) {
+          return ApiException(
+            message: message,
+            statusCode: response.statusCode,
+          );
         }
-      } on FormatException {
-        message = 'Something went wrong. Try again.';
       }
-    }
+    } catch (_) {}
     return ApiException(
-      message: message,
+      message: 'Server error (${response.statusCode})',
       statusCode: response.statusCode,
-      path: path,
     );
+  }
+
+  Future<String?> _readToken() async {
+    return await readToken();
   }
 }

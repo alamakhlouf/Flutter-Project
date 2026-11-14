@@ -11,6 +11,7 @@ class InventoryProductCard extends StatelessWidget {
     this.showSupplier = true,
     this.showOwnerStockStatus = false,
     this.onTap,
+    this.onToggleFavorite,
   });
 
   final InventoryProduct product;
@@ -18,6 +19,7 @@ class InventoryProductCard extends StatelessWidget {
   final bool showSupplier;
   final bool showOwnerStockStatus;
   final VoidCallback? onTap;
+  final VoidCallback? onToggleFavorite;
 
   @override
   Widget build(BuildContext context) {
@@ -46,16 +48,40 @@ class InventoryProductCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  height: 144,
-                  width: double.infinity,
-                  child: validImageUrl
-                      ? Image.network(
-                          imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _imagePlaceholder(),
-                        )
-                      : _imagePlaceholder(),
+                Stack(
+                  children: [
+                    SizedBox(
+                      height: 144,
+                      width: double.infinity,
+                      child: validImageUrl
+                          ? Image.network(
+                              imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => _imagePlaceholder(),
+                            )
+                          : _imagePlaceholder(),
+                    ),
+                    if (onToggleFavorite != null)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Material(
+                          color: AppColors.surface.withValues(alpha: 0.85),
+                          shape: const CircleBorder(),
+                          child: IconButton(
+                            icon: Icon(
+                              product.favorite ? Icons.favorite : Icons.favorite_border,
+                              color: product.favorite ? AppColors.error : AppColors.primary,
+                              size: 20,
+                            ),
+                            onPressed: onToggleFavorite,
+                            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                            padding: EdgeInsets.zero,
+                            tooltip: product.favorite ? 'Remove from favorites' : 'Add to favorites',
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),

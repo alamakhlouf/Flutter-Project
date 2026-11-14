@@ -12,6 +12,127 @@ import 'package:service_hub/features/auth/models/auth_user.dart';
 import 'package:service_hub/features/auth/screens/session_home_screen.dart';
 
 void main() {
+  testWidgets('notification links open notifications and related details', (
+    tester,
+  ) async {
+    final api = ApiClient(
+      baseUrl: 'http://localhost:8080',
+      client: MockClient((request) async {
+        switch (request.url.path) {
+          case '/api/services':
+          case '/api/products':
+          case '/api/workshops':
+            return http.Response(jsonEncode({'content': []}), 200);
+          case '/api/notifications':
+            return http.Response(
+              jsonEncode([
+                {
+                  'id': 'notification-order',
+                  'title': 'Order updated',
+                  'message': 'Your order is ready.',
+                  'type': 'ORDER',
+                  'relatedEntityType': 'Order',
+                  'relatedEntityId': 'order-1',
+                  'read': false,
+                  'createdAt': DateTime.now().toIso8601String(),
+                },
+                {
+                  'id': 'notification-workshop',
+                  'title': 'Workshop update',
+                  'message': 'A workshop changed.',
+                  'type': 'WORKSHOP',
+                  'relatedEntityType': 'Workshop',
+                  'relatedEntityId': 'workshop-1',
+                  'read': false,
+                  'createdAt': DateTime.now().toIso8601String(),
+                },
+              ]),
+              200,
+            );
+          case '/api/orders/order-1':
+            return http.Response(
+              jsonEncode({
+                'id': 'order-1',
+                'customerId': 'customer-1',
+                'supplierId': 'supplier-1',
+                'totalAmount': 12.5,
+                'status': 'COMPLETED',
+                'items': [
+                  {
+                    'id': 'item-1',
+                    'productId': 'product-1',
+                    'productName': 'Soap',
+                    'unitPrice': 12.5,
+                    'quantity': 1,
+                    'lineTotal': 12.5,
+                  },
+                ],
+              }),
+              200,
+            );
+          case '/api/workshops/workshop-1':
+            return http.Response(
+              jsonEncode({
+                'id': 'workshop-1',
+                'organizerId': 'provider-1',
+                'organizerName': 'Provider',
+                'title': 'First Aid Workshop',
+                'description': 'Workshop details',
+                'category': 'Health',
+                'startDateTime': '2026-12-01T10:00:00',
+                'endDateTime': '2026-12-01T12:00:00',
+                'location': 'Community Hall',
+                'capacity': 20,
+                'registrationDeadline': '2026-11-30T10:00:00',
+                'status': 'PUBLISHED',
+                'participantCount': 0,
+              }),
+              200,
+            );
+          case '/api/workshops/my/registrations':
+            return http.Response('[]', 200);
+          case '/api/notifications/notification-order/read':
+          case '/api/notifications/notification-workshop/read':
+            return http.Response('{}', 200);
+          default:
+            return http.Response('{"message":"Not found"}', 404);
+        }
+      }),
+      readToken: () async => 'test-token',
+    );
+
+    await tester.pumpWidget(
+      AuthScope(
+        user: const AuthUser(
+          id: 'customer-1',
+          fullName: 'Test Customer',
+          email: 'customer@example.com',
+          role: UserRole.customer,
+        ),
+        logout: () async {},
+        updateUser: (_) {},
+        api: api,
+        child: const MaterialApp(home: SessionHomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Navigator.of(tester.element(find.byKey(const ValueKey(AppRoutes.home))))
+        .pushNamed(AppRoutes.notifications);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Notifications'), findsOneWidget);
+    await tester.tap(find.text('Order updated'));
+    await tester.pumpAndSettle();
+    expect(find.text('Order details'), findsOneWidget);
+    expect(find.text('Soap × 1'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Workshop update'));
+    await tester.pumpAndSettle();
+    expect(find.text('First Aid Workshop'), findsOneWidget);
+  });
+
   testWidgets('bottom navigation switches among the four main sections', (
     tester,
   ) async {

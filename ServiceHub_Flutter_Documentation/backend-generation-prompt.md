@@ -91,6 +91,7 @@ Create simple notifications from service methods; no message broker.
 ### Auth/profile
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/google`
 - `GET /api/auth/me`
 - `GET /api/users/me`
 - `PUT /api/users/me`

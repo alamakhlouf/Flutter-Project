@@ -7,8 +7,17 @@ class InventoryService {
   final ApiClient api;
 
   Future<List<InventoryItemModel>> fetchMyInventory() async {
-    final response = await api.get('/api/inventory', authenticated: true);
-    return _parseList(response);
+    final response = await api.getJson('/api/inventory', authenticated: true);
+    if (response is List) {
+      return response
+          .whereType<Map>()
+          .map((item) => InventoryItemModel.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    }
+    if (response is Map) {
+      return _parseList(Map<String, dynamic>.from(response));
+    }
+    return <InventoryItemModel>[];
   }
 
   Future<InventoryItemModel> createInventoryItem({

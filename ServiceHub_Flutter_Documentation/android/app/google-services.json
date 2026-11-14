@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "721746615689",
+    "project_id": "abcbonbon123",
+    "storage_bucket": "abcbonbon123.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:721746615689:android:8e98903217a28d3c0e9558",
+        "android_client_info": {
+          "package_name": "com.example.service_hub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "721746615689-31o7qo4p1rsu2s6ku9ako4galdjs064p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApGjdQBU7VzWWm7YbOdQ_PAEdCI0pVVUQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "721746615689-31o7qo4p1rsu2s6ku9ako4galdjs064p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

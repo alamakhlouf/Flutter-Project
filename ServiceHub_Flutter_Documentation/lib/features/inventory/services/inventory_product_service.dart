@@ -11,7 +11,7 @@ class InventoryProductService {
     final path = query == null || query.isEmpty
         ? '/api/products'
         : '/api/products?${Uri(queryParameters: {'search': query}).query}';
-    return _parseList(await api.get(path, authenticated: false));
+    return _parseList(await api.get(path, authenticated: true));
   }
 
   Future<List<InventoryProduct>> fetchMyProducts() async {
@@ -19,7 +19,7 @@ class InventoryProductService {
   }
 
   Future<InventoryProduct> fetchProduct(String id) async {
-    final response = await api.get('/api/products/$id', authenticated: false);
+    final response = await api.get('/api/products/$id', authenticated: true);
     return InventoryProduct.fromJson(response);
   }
 
@@ -73,14 +73,46 @@ class InventoryProductService {
     );
   }
 
+  Future<InventoryProduct> favoriteProduct(String id) async {
+    final response = await api.post(
+      '/api/products/$id/favorite',
+      authenticated: true,
+    );
+    return InventoryProduct.fromJson(response);
+  }
+
+  Future<void> unfavoriteProduct(String id) async {
+    await api.delete('/api/products/$id/favorite', authenticated: true);
+  }
+
+  Future<List<InventoryProduct>> fetchFavorites() async {
+    final response = await api.getJson('/api/products/favorites', authenticated: true);
+    if (response is List) {
+      return response
+          .whereType<Map>()
+          .map((item) => InventoryProduct.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    }
+    if (response is Map) {
+      final rawList = response['content'] ?? response['items'] ?? response['data'];
+      if (rawList is List) {
+        return rawList
+            .whereType<Map>()
+            .map((item) => InventoryProduct.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    }
+    return <InventoryProduct>[];
+  }
+
   List<InventoryProduct> _parseList(Map<String, dynamic> response) {
     final rawList =
         response['content'] ?? response['items'] ?? response['data'];
     if (rawList is! List) return <InventoryProduct>[];
     return rawList
-        .whereType<Map>()
+        .where((item) => item is Map)
         .map(
-          (item) => InventoryProduct.fromJson(Map<String, dynamic>.from(item)),
+          (item) => InventoryProduct.fromJson(Map<String, dynamic>.from(item as Map)),
         )
         .toList();
   }

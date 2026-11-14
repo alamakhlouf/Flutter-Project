@@ -5,6 +5,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
 import '../../auth/models/auth_user.dart';
+import '../../notifications/widgets/notification_bell.dart';
 import '../models/workshop_model.dart';
 import '../services/workshop_service.dart';
 import '../utils/workshop_date_format.dart';
@@ -85,6 +86,7 @@ class _WorkshopCatalogScreenState extends State<WorkshopCatalogScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         actions: [
+          const NotificationBell(),
           if (isProvider)
             IconButton(
               tooltip: 'My Workshops',

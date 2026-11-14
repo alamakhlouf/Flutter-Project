@@ -47,6 +47,39 @@ class WorkshopService {
   Future<void> cancelRegistration(String id) =>
       api.delete('/api/workshops/$id/registrations/me', authenticated: true);
 
+  Future<Map<String, dynamic>> checkGoogleStatus() async {
+    final res = await api.getJson('/api/integrations/google/status', authenticated: true);
+    return res is Map ? Map<String, dynamic>.from(res) : {};
+  }
+
+  Future<Map<String, dynamic>> connectGoogleToken({
+    required String accessToken,
+    String? email,
+  }) async {
+    final res = await api.post(
+      '/api/integrations/google/token',
+      authenticated: true,
+      body: {
+        'accessToken': accessToken,
+        if (email != null && email.isNotEmpty) 'email': email,
+      },
+    );
+    return Map<String, dynamic>.from(res);
+  }
+
+  Future<String> getGoogleConnectUrl() async {
+    final res = await api.getJson('/api/integrations/google/connect', authenticated: true);
+    if (res is Map && res['authUrl'] != null) {
+      return res['authUrl'].toString();
+    }
+    throw const FormatException('Failed to get Google connect authorization URL');
+  }
+
+  Future<WorkshopModel> generateMeeting(String id) async {
+    final res = await api.post('/api/workshops/$id/generate-meeting', authenticated: true);
+    return WorkshopModel.fromJson(Map<String, dynamic>.from(res as Map));
+  }
+
   Future<WorkshopModel> create({
     required String title,
     required String description,
@@ -57,11 +90,13 @@ class WorkshopService {
     required DateTime endDateTime,
     required DateTime registrationDeadline,
     String? coverImageUrl,
+    String workshopType = 'IN_PERSON',
   }) async {
     final response = await api.post('/api/workshops', authenticated: true, body: _body(
       title: title, description: description, category: category, location: location,
       capacity: capacity, startDateTime: startDateTime, endDateTime: endDateTime,
       registrationDeadline: registrationDeadline, coverImageUrl: coverImageUrl,
+      workshopType: workshopType,
     ));
     return WorkshopModel.fromJson(response);
   }
@@ -76,11 +111,13 @@ class WorkshopService {
     required DateTime endDateTime,
     required DateTime registrationDeadline,
     String? coverImageUrl,
+    String workshopType = 'IN_PERSON',
   }) async {
     final response = await api.put('/api/workshops/$id', authenticated: true, body: _body(
       title: title, description: description, category: category, location: location,
       capacity: capacity, startDateTime: startDateTime, endDateTime: endDateTime,
       registrationDeadline: registrationDeadline, coverImageUrl: coverImageUrl,
+      workshopType: workshopType,
     ));
     return WorkshopModel.fromJson(response);
   }
@@ -101,12 +138,14 @@ class WorkshopService {
     required String title, required String description, required String category,
     required String location, required int capacity, required DateTime startDateTime,
     required DateTime endDateTime, required DateTime registrationDeadline, String? coverImageUrl,
+    required String workshopType,
   }) => {
     'title': title.trim(), 'description': description.trim(), 'category': category.trim(),
     'location': location.trim(), 'capacity': capacity,
     'startDateTime': startDateTime.toUtc().toIso8601String(),
     'endDateTime': endDateTime.toUtc().toIso8601String(),
     'registrationDeadline': registrationDeadline.toUtc().toIso8601String(),
+    'workshopType': workshopType.toUpperCase(),
     if (coverImageUrl != null && coverImageUrl.trim().isNotEmpty) 'coverImageUrl': coverImageUrl.trim(),
   };
 }

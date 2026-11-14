@@ -77,6 +77,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  Future<void> _googleSubmit() async {
+    if (_submitting) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      final googleAccount = await widget.authService.selectGoogleAccount();
+      if (googleAccount == null) {
+        if (mounted) setState(() => _submitting = false);
+        return;
+      }
+      final googleAuthData = await googleAccount.authentication;
+      final idToken = googleAuthData.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw ApiException(message: 'Failed to retrieve Google ID Token.');
+      }
+
+      final user = await widget.authService.googleAuth(
+        idToken: idToken,
+        role: _role,
+      );
+
+      if (!mounted) return;
+      widget.onAuthenticated(user);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = error.message;
+      });
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = 'Google Sign-Up error: $e';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
@@ -167,6 +207,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 label: 'Create Account',
                 loading: _submitting,
                 onPressed: _submit,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Expanded(child: Divider(color: AppColors.border)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'OR',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ),
+                  const Expanded(child: Divider(color: AppColors.border)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              GoogleSignInButton(
+                label: 'Sign up with Google',
+                loading: _submitting,
+                onPressed: _googleSubmit,
               ),
               const SizedBox(height: 16),
               Wrap(

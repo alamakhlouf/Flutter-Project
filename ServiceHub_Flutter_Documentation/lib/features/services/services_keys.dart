@@ -4,7 +4,7 @@ class ServicesKeys {
   const ServicesKeys._();
 
   static const catalogSearchInput = Key('catalog_search_input');
-  static const catalogFilterButton = Key('catalog_filter_button');
+  static const catalogFavoritesButton = Key('catalog_favorites_button');
   static const catalogRetryButton = Key('catalog_retry_button');
   static const openCatalog = Key('open_catalog');
 

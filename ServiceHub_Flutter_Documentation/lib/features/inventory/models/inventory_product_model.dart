@@ -1,3 +1,5 @@
+typedef Product = InventoryProduct;
+
 class InventoryProduct {
   const InventoryProduct({
     required this.id,
@@ -10,6 +12,7 @@ class InventoryProduct {
     this.description,
     this.imageUrl,
     this.quantityAvailable,
+    this.favorite = false,
   });
 
   final String id;
@@ -22,6 +25,27 @@ class InventoryProduct {
   final String? description;
   final String? imageUrl;
   final int? quantityAvailable;
+  final bool favorite;
+
+  InventoryProduct copyWith({
+    bool? favorite,
+    bool? available,
+    int? quantityAvailable,
+  }) {
+    return InventoryProduct(
+      id: id,
+      supplierId: supplierId,
+      supplierName: supplierName,
+      name: name,
+      category: category,
+      price: price,
+      available: available ?? this.available,
+      description: description,
+      imageUrl: imageUrl,
+      quantityAvailable: quantityAvailable ?? this.quantityAvailable,
+      favorite: favorite ?? this.favorite,
+    );
+  }
 
   factory InventoryProduct.fromJson(Map<String, dynamic> json) {
     final id = json['id'];
@@ -51,6 +75,7 @@ class InventoryProduct {
       description: _optionalString(json['description']),
       imageUrl: _optionalString(json['imageUrl']),
       quantityAvailable: quantity is num ? quantity.toInt() : null,
+      favorite: json['favorite'] == true,
     );
   }
 

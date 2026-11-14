@@ -5,6 +5,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
 import '../../auth/models/auth_user.dart';
+import '../../notifications/widgets/notification_bell.dart';
 import '../models/service_model.dart';
 import '../services/services_service.dart';
 import '../services_keys.dart';
@@ -57,6 +58,32 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
     super.dispose();
   }
 
+  Future<void> _toggleFavorite(ServiceModel service) async {
+    final index = _services.indexWhere((s) => s.id == service.id);
+    if (index == -1) return;
+
+    final newFavorite = !service.favorite;
+    setState(() {
+      _services[index] = service.copyWith(favorite: newFavorite);
+    });
+
+    try {
+      if (service.favorite) {
+        await _service.unfavoriteService(service.id);
+      } else {
+        await _service.favoriteService(service.id);
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _services[index] = service;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
   Future<void> _loadCatalog({bool showLoading = true}) async {
     if (showLoading && mounted) {
       setState(() {
@@ -102,23 +129,6 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
     _loadCatalog();
   }
 
-  void _openFilterSheet() {
-    ServiceFilterSheet.show(
-      context: context,
-      selectedCategory: _category,
-      maxPrice: _maxPrice,
-      location: _location,
-      onApply: ({category, maxPrice, location}) {
-        setState(() {
-          _category = category ?? 'All';
-          _maxPrice = maxPrice;
-          _location = location;
-        });
-        _loadCatalog();
-      },
-    );
-  }
-
   bool get _hasActiveFilters =>
       _category != 'All' ||
       _maxPrice != null ||
@@ -135,6 +145,7 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
       appBar: AppBar(
         title: const Text('Services Catalog'),
         actions: [
+          const NotificationBell(),
           if (isProvider)
             IconButton(
               key: ServicesKeys.openMyServices,
@@ -143,29 +154,12 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
               onPressed: () =>
                   Navigator.of(context).pushNamed(AppRoutes.myServices),
             ),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                key: ServicesKeys.catalogFilterButton,
-                icon: const Icon(Icons.tune_outlined),
-                tooltip: 'Filter services',
-                onPressed: _openFilterSheet,
-              ),
-              if (_hasActiveFilters)
-                Positioned(
-                  right: 8,
-                  top: 10,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppColors.secondary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-            ],
+          IconButton(
+            key: ServicesKeys.catalogFavoritesButton,
+            icon: const Icon(Icons.favorite_border_rounded),
+            tooltip: 'Favorite services',
+            onPressed: () =>
+                Navigator.of(context).pushNamed(AppRoutes.favoriteServices),
           ),
         ],
       ),
@@ -329,6 +323,7 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
             Navigator.of(context)
                 .pushNamed(AppRoutes.serviceDetails, arguments: service);
           },
+          onToggleFavorite: () => _toggleFavorite(service),
         );
       },
     );

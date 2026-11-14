@@ -71,6 +71,60 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _googleSubmit() async {
+    if (_submitting) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      final googleAccount = await widget.authService.selectGoogleAccount();
+      if (googleAccount == null) {
+        if (mounted) setState(() => _submitting = false);
+        return;
+      }
+      final googleAuthData = await googleAccount.authentication;
+      final idToken = googleAuthData.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw ApiException(message: 'Failed to retrieve Google ID Token.');
+      }
+
+      AuthUser? user;
+      try {
+        user = await widget.authService.googleAuth(idToken: idToken);
+      } on ApiException catch (e) {
+        if (e.message == 'ROLE_REQUIRED_FOR_NEW_USER' && mounted) {
+          final selectedRole = await showGoogleRoleSelectionDialog(context);
+          if (selectedRole == null) {
+            setState(() => _submitting = false);
+            return;
+          }
+          user = await widget.authService.googleAuth(
+            idToken: idToken,
+            role: selectedRole,
+          );
+        } else {
+          rethrow;
+        }
+      }
+
+      if (!mounted || user == null) return;
+      widget.onAuthenticated(user);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = error.message;
+      });
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = 'Google Sign-In error: $e';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
@@ -120,6 +174,29 @@ class _LoginScreenState extends State<LoginScreen> {
                 label: 'Sign In',
                 loading: _submitting,
                 onPressed: _submit,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Expanded(child: Divider(color: AppColors.border)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'OR',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ),
+                  const Expanded(child: Divider(color: AppColors.border)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              GoogleSignInButton(
+                label: 'Continue with Google',
+                loading: _submitting,
+                onPressed: _googleSubmit,
               ),
               const SizedBox(height: 16),
               Wrap(

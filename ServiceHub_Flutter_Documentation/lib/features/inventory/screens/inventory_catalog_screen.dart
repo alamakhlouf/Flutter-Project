@@ -8,6 +8,7 @@ import '../services/inventory_product_service.dart';
 import '../widgets/inventory_product_card.dart';
 import '../../../app/app_routes.dart';
 import '../../auth/models/auth_user.dart';
+import '../../notifications/widgets/notification_bell.dart';
 
 class InventoryCatalogScreen extends StatefulWidget {
   const InventoryCatalogScreen({super.key, this.productService});
@@ -139,13 +140,52 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
     }
   }
 
+  Future<void> _toggleFavorite(InventoryProduct product) async {
+    final index = _products.indexWhere((p) => p.id == product.id);
+    if (index == -1) return;
+
+    final newFavorite = !product.favorite;
+    setState(() {
+      _products[index] = product.copyWith(favorite: newFavorite);
+    });
+
+    try {
+      if (product.favorite) {
+        await _service.unfavoriteProduct(product.id);
+      } else {
+        await _service.favoriteProduct(product.id);
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _products[index] = product;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final role = AuthScope.of(context).user.role;
     final canManageInventory =
         role == UserRole.provider || role == UserRole.supplier;
     return Scaffold(
-      appBar: AppBar(title: const Text('Available Inventory')),
+      appBar: AppBar(
+        title: const Text('Available Inventory'),
+        actions: [
+          const NotificationBell(),
+          IconButton(
+            icon: const Icon(Icons.favorite),
+            onPressed: () async {
+              await Navigator.of(context).pushNamed(AppRoutes.favoriteProducts);
+              await _loadProducts(showLoading: false);
+            },
+            tooltip: 'Favorite Products',
+          ),
+        ],
+      ),
       floatingActionButton: canManageInventory
           ? FloatingActionButton.extended(
               icon: const Icon(Icons.inventory_2_outlined),
@@ -216,6 +256,7 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
           padding: const EdgeInsets.only(bottom: 16),
           child: InventoryProductCard(
             product: product,
+            onToggleFavorite: () => _toggleFavorite(product),
             actions: Wrap(
               alignment: WrapAlignment.end,
               spacing: 8,

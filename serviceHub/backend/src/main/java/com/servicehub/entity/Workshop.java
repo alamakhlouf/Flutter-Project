@@ -22,4 +22,7 @@ public class Workshop extends AuditedEntity {
     @Min(1) @Column(nullable = false) private int capacity;
     @Column(nullable = false) private Instant registrationDeadline;
     @Enumerated(EnumType.STRING) @Column(nullable = false) private WorkshopStatus status = WorkshopStatus.DRAFT;
+    @Enumerated(EnumType.STRING) @Column(nullable = false) private WorkshopType workshopType = WorkshopType.IN_PERSON;
+    @Column(length = 2048) private String meetingUrl;
+    private String googleCalendarEventId;
 }

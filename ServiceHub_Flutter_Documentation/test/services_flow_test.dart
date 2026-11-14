@@ -5,7 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:service_hub/app/app.dart';
+import 'package:service_hub/core/network/api_client.dart';
 import 'package:service_hub/features/auth/auth_keys.dart';
+import 'package:service_hub/features/auth/auth_scope.dart';
+import 'package:service_hub/features/auth/models/auth_user.dart';
+import 'package:service_hub/features/auth/screens/session_home_screen.dart';
 import 'package:service_hub/features/auth/services/auth_service.dart';
 import 'package:service_hub/features/services/services_keys.dart';
 
@@ -84,7 +88,49 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Customer can browse catalog, filter, and view details', (tester) async {
+  testWidgets('services catalog header opens favorite services', (
+    tester,
+  ) async {
+    final api = ApiClient(
+      baseUrl: 'http://localhost:8080',
+      client: MockClient((request) async {
+        if (request.url.path == '/api/services') {
+          return http.Response('{"content":[]}', 200);
+        }
+        if (request.url.path == '/api/services/favorites') {
+          return http.Response('[]', 200);
+        }
+        return http.Response('{"message":"Not found"}', 404);
+      }),
+      readToken: () async => 'test-token',
+    );
+
+    await tester.pumpWidget(
+      AuthScope(
+        user: const AuthUser(
+          id: 'customer-1',
+          fullName: 'Test Customer',
+          email: 'customer@example.com',
+          role: UserRole.customer,
+        ),
+        logout: () async {},
+        updateUser: (_) {},
+        api: api,
+        child: const MaterialApp(home: SessionHomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Filter services'), findsNothing);
+    await tester.tap(find.byKey(ServicesKeys.catalogFavoritesButton));
+    await tester.pumpAndSettle();
+    expect(find.text('Favorite Services'), findsOneWidget);
+    expect(find.text('No favorite services yet'), findsOneWidget);
+  });
+
+  testWidgets('Customer can browse catalog, filter, and view details', (
+    tester,
+  ) async {
     final client = MockClient((request) async {
       if (request.url.path == '/api/auth/login') {
         return http.Response(
@@ -125,7 +171,8 @@ void main() {
           200,
         );
       }
-      if (request.method == 'GET' && request.url.path == '/api/services/$serviceId1') {
+      if (request.method == 'GET' &&
+          request.url.path == '/api/services/$serviceId1') {
         return http.Response(
           jsonEncode(
             serviceJson(
@@ -145,10 +192,7 @@ void main() {
 
     await signIn(tester, client: client, email: 'customer@example.com');
 
-    expect(
-      find.byKey(const ValueKey('bottom_nav_services')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('bottom_nav_services')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('bottom_nav_services')));
     await tester.pumpAndSettle();
 
@@ -175,7 +219,9 @@ void main() {
     expect(find.text('Book Service'), findsOneWidget);
   });
 
-  testWidgets('Provider can list, create, edit, toggle, and delete services', (tester) async {
+  testWidgets('Provider can list, create, edit, toggle, and delete services', (
+    tester,
+  ) async {
     final services = <Map<String, Object?>>[
       serviceJson(
         id: serviceId1,
@@ -205,10 +251,7 @@ void main() {
         );
       }
       if (request.method == 'GET' && request.url.path == '/api/services/my') {
-        return http.Response(
-          jsonEncode({'content': services}),
-          200,
-        );
+        return http.Response(jsonEncode({'content': services}), 200);
       }
       if (request.method == 'POST' && request.url.path == '/api/services') {
         lastCreated = jsonDecode(request.body) as Map<String, dynamic>;
@@ -223,13 +266,15 @@ void main() {
         services.add(newService);
         return http.Response(jsonEncode(newService), 201);
       }
-      if (request.method == 'PATCH' && request.url.path == '/api/services/$serviceId1/status') {
+      if (request.method == 'PATCH' &&
+          request.url.path == '/api/services/$serviceId1/status') {
         final body = jsonDecode(request.body) as Map<String, dynamic>;
         final current = services.firstWhere((s) => s['id'] == serviceId1);
         current['isActive'] = body['isActive'];
         return http.Response(jsonEncode(current), 200);
       }
-      if (request.method == 'DELETE' && request.url.path == '/api/services/$serviceId1') {
+      if (request.method == 'DELETE' &&
+          request.url.path == '/api/services/$serviceId1') {
         services.removeWhere((s) => s['id'] == serviceId1);
         return http.Response('', 204);
       }
@@ -278,7 +323,9 @@ void main() {
     expect(find.text('New Lawn Care'), findsOneWidget);
 
     // Delete service confirmation
-    final deleteAction = find.byKey(ServicesKeys.deleteServiceAction(serviceId1));
+    final deleteAction = find.byKey(
+      ServicesKeys.deleteServiceAction(serviceId1),
+    );
     expect(deleteAction, findsOneWidget);
     await tester.tap(deleteAction);
     await tester.pumpAndSettle();

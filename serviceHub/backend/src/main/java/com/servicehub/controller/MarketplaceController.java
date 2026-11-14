@@ -13,6 +13,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,10 +31,13 @@ public class MarketplaceController {
            @RequestParam(defaultValue="") String category,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
         return market.listServices(search,category,pageable(page,size));
     }
+    @GetMapping("/services/favorites") public List<ServiceDto> myServiceFavorites() { return market.myServiceFavorites(); }
     @GetMapping("/services/my") public Page<ServiceDto> myServices(@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
         return market.myServices(pageable(page,size));
     }
     @GetMapping("/services/{id}") public ServiceDto service(@PathVariable UUID id) { return market.service(id); }
+    @PostMapping("/services/{serviceId}/favorite") public ServiceDto favoriteService(@PathVariable UUID serviceId) { return market.favoriteService(serviceId); }
+    @DeleteMapping("/services/{serviceId}/favorite") public void unfavoriteService(@PathVariable UUID serviceId) { market.unfavoriteService(serviceId); }
     @PostMapping("/services") public ServiceDto createService(@Valid @RequestBody ServiceRequest req) { return market.createService(req); }
     @PutMapping("/services/{id}") public ServiceDto updateService(@PathVariable UUID id,@Valid @RequestBody ServiceRequest req) { return market.updateService(id,req); }
     @PatchMapping("/services/{id}/active") public ServiceDto activeService(@PathVariable UUID id,@Valid @RequestBody ActiveUpdate req) { return market.serviceActive(id,req); }
@@ -55,14 +59,25 @@ public class MarketplaceController {
     @PatchMapping("/bookings/{id}/status") public BookingDto bookingStatus(@PathVariable UUID id,@Valid @RequestBody BookingStatusUpdate req) { return market.bookingStatus(id,req.status()); }
     @PatchMapping("/bookings/{id}/cancel") public BookingDto cancelBooking(@PathVariable UUID id) { return market.cancelBooking(id); }
 
+    // Provider Availability & Calendar Endpoints
+    @GetMapping("/providers/me/availability") public List<ProviderAvailabilityDto> myAvailability() { return market.myAvailability(); }
+    @PutMapping("/providers/me/availability") public List<ProviderAvailabilityDto> updateAvailability(@Valid @RequestBody List<ProviderAvailabilityRequest> req) { return market.updateAvailability(req); }
+    @PostMapping("/providers/me/unavailable-dates") public UnavailableDateDto createUnavailableDate(@Valid @RequestBody UnavailableDateRequest req) { return market.createUnavailableDate(req); }
+    @DeleteMapping("/providers/me/unavailable-dates/{id}") public void deleteUnavailableDate(@PathVariable UUID id) { market.deleteUnavailableDate(id); }
+    @GetMapping("/providers/{providerId}/available-slots") public List<AvailableSlotDto> availableSlots(@PathVariable UUID providerId, @RequestParam LocalDate date) { return market.availableSlots(providerId, date); }
+    @GetMapping("/providers/me/calendar") public List<ProviderCalendarDto> providerCalendar(@RequestParam LocalDate startDate, @RequestParam LocalDate endDate) { return market.providerCalendar(startDate, endDate); }
+
     @GetMapping("/suppliers") public List<UserDto> suppliers() { return market.suppliers(); }
     @GetMapping("/suppliers/{id}") public UserDto supplier(@PathVariable UUID id) { return market.supplier(id); }
+    @GetMapping("/products/favorites") public List<ProductDto> myFavorites() { return market.myFavorites(); }
     @GetMapping("/products/my") public Page<ProductDto> myProducts(@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
         return market.myProducts(pageable(page,size));
     }
     @GetMapping("/products") public Page<ProductDto> products(@RequestParam(defaultValue="") String search,@RequestParam(defaultValue="") String category,
            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) { return market.listProducts(search,category,pageable(page,size)); }
     @GetMapping("/products/{id}") public ProductDto product(@PathVariable UUID id) { return market.product(id); }
+    @PostMapping("/products/{productId}/favorite") public ProductDto favoriteProduct(@PathVariable UUID productId) { return market.favoriteProduct(productId); }
+    @DeleteMapping("/products/{productId}/favorite") public void unfavoriteProduct(@PathVariable UUID productId) { market.unfavoriteProduct(productId); }
     @PostMapping("/products") public ProductDto createProduct(@Valid @RequestBody ProductRequest req) { return market.createProduct(req); }
     @PutMapping("/products/{id}") public ProductDto updateProduct(@PathVariable UUID id,@Valid @RequestBody ProductRequest req) { return market.updateProduct(id,req); }
     @PatchMapping("/products/{id}/availability") public ProductDto productAvailability(@PathVariable UUID id,@Valid @RequestBody ProductAvailability req) { return market.productAvailability(id,req); }
@@ -91,6 +106,7 @@ public class MarketplaceController {
     @PutMapping("/workshops/{id}") public WorkshopDto updateWorkshop(@PathVariable UUID id,@Valid @RequestBody WorkshopRequest req) { return market.updateWorkshop(id,req); }
     @PatchMapping("/workshops/{id}/publish") public WorkshopDto publishWorkshop(@PathVariable UUID id) { return market.publishWorkshop(id); }
     @PatchMapping("/workshops/{id}/cancel") public WorkshopDto cancelWorkshop(@PathVariable UUID id) { return market.cancelWorkshop(id); }
+    @PostMapping("/workshops/{id}/generate-meeting") public WorkshopDto generateMeeting(@PathVariable UUID id) { return market.generateMeeting(id); }
     @GetMapping("/workshops/my/organized") public List<WorkshopDto> organized() { return market.organized(); }
     @GetMapping("/workshops/my/registrations") public List<RegistrationDto> myRegistrations() { return market.myRegistrations(); }
     @GetMapping("/workshops/{id}/participants") public List<UserDto> participants(@PathVariable UUID id) { return market.participants(id); }
@@ -108,6 +124,9 @@ public class MarketplaceController {
     @PatchMapping("/admin/users/{id}/block") public UserDto blockUser(@PathVariable UUID id) { return market.adminBlockUser(id); }
     @DeleteMapping("/admin/services/{id}") public void deleteAdminService(@PathVariable UUID id) { market.adminDeleteService(id); }
     @GetMapping("/notifications") public List<NotificationDto> notifications() { return market.myNotifications(); }
+    @GetMapping("/notifications/unread-count") public java.util.Map<String, Long> unreadNotificationCount() { return java.util.Map.of("count", market.unreadNotificationCount()); }
     @PatchMapping("/notifications/{id}/read") public NotificationDto readNotification(@PathVariable UUID id) { return market.readNotification(id); }
     @PatchMapping("/notifications/read-all") public void readAll() { market.readAllNotifications(); }
+    @PostMapping("/notifications/device-token") public void registerDeviceToken(@Valid @RequestBody DeviceTokenRequest req) { market.registerDeviceToken(req.token()); }
+    @DeleteMapping("/notifications/device-token") public void unregisterDeviceToken(@Valid @RequestBody DeviceTokenRequest req) { market.unregisterDeviceToken(req.token()); }
 }

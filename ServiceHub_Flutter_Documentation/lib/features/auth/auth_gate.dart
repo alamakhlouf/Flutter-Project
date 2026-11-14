@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_routes.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/services/fcm_service.dart';
 import 'auth_scope.dart';
 import 'models/auth_user.dart';
 import 'screens/admin_blocked_screen.dart';
@@ -86,6 +87,7 @@ class _AuthGateState extends State<AuthGate> {
       _gate = _SessionGate.adminBlocked;
     } else {
       _gate = _SessionGate.ready;
+      FcmService.initialize(_auth.api).ignore();
     }
   }
 

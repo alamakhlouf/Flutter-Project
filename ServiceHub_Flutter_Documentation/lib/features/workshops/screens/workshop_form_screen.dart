@@ -24,6 +24,7 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
   DateTime _start = DateTime.now().add(const Duration(days: 1));
   DateTime _end = DateTime.now().add(const Duration(days: 1, hours: 2));
   DateTime _deadline = DateTime.now().add(const Duration(hours: 12));
+  String _workshopType = 'IN_PERSON';
   bool _busy = false;
 
   @override
@@ -33,13 +34,14 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
     _title = TextEditingController(text: w?.title);
     _description = TextEditingController(text: w?.description);
     _category = TextEditingController(text: w?.category);
-    _location = TextEditingController(text: w?.location);
+    _location = TextEditingController(text: w?.location ?? (w?.isOnline == true ? 'Google Meet (Online)' : ''));
     _capacity = TextEditingController(text: w?.capacity.toString() ?? '10');
     _coverImageUrl = TextEditingController(text: w?.coverImageUrl ?? '');
     if (w != null) {
       _start = w.startDateTime;
       _end = w.endDateTime;
       _deadline = w.registrationDeadline;
+      _workshopType = w.workshopType.toUpperCase();
     }
   }
 
@@ -68,11 +70,12 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
         title: _title.text,
         description: _description.text,
         category: _category.text,
-        location: _location.text,
+        location: _workshopType == 'ONLINE' ? 'Google Meet (Online)' : _location.text,
         capacity: int.parse(_capacity.text),
         start: _start,
         end: _end,
         deadline: _deadline,
+        workshopType: _workshopType,
       );
       if (widget.workshop == null) {
         await _service.create(
@@ -85,6 +88,7 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
           startDateTime: args.start,
           endDateTime: args.end,
           registrationDeadline: args.deadline,
+          workshopType: args.workshopType,
         );
       } else {
         await _service.update(
@@ -98,6 +102,7 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
           startDateTime: args.start,
           endDateTime: args.end,
           registrationDeadline: args.deadline,
+          workshopType: args.workshopType,
         );
       }
       if (mounted) Navigator.of(context).pop(true);
@@ -124,11 +129,31 @@ class _WorkshopFormScreenState extends State<WorkshopFormScreen> {
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          DropdownButtonFormField<String>(
+            value: _workshopType,
+            decoration: const InputDecoration(labelText: 'Workshop Type'),
+            items: const [
+              DropdownMenuItem(value: 'IN_PERSON', child: Text('In-Person')),
+              DropdownMenuItem(value: 'ONLINE', child: Text('Online (Google Meet)')),
+            ],
+            onChanged: (val) {
+              if (val != null) {
+                setState(() {
+                  _workshopType = val;
+                  if (val == 'ONLINE') {
+                    _location.text = 'Google Meet (Online)';
+                  }
+                });
+              }
+            },
+          ),
+          const SizedBox(height: 16),
           for (final field in [
             _field(_title, 'Title'),
             _field(_description, 'Description', required: false, maxLines: 3),
             _field(_category, 'Category'),
-            _field(_location, 'Location'),
+            if (_workshopType != 'ONLINE')
+              _field(_location, 'Location'),
             _field(_capacity, 'Capacity', keyboard: TextInputType.number),
           ])
             Padding(padding: const EdgeInsets.only(bottom: 16), child: field),

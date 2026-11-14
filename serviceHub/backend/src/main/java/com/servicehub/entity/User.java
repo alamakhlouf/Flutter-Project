@@ -19,4 +19,5 @@ public class User extends AuditedEntity {
     private String phone;
     private String profileImageUrl;
     @Column(nullable = false) private boolean blocked = false;
+    private String googleSubjectId;
 }

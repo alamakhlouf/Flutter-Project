@@ -36,6 +36,7 @@ class ServiceModel {
     this.location,
     this.imageUrl,
     this.isActive = true,
+    this.favorite = false,
     this.providerName,
     this.providerEmail,
     this.providerPhone,
@@ -53,6 +54,7 @@ class ServiceModel {
   final String? location;
   final String? imageUrl;
   final bool isActive;
+  final bool favorite;
   final String? providerName;
   final String? providerEmail;
   final String? providerPhone;
@@ -107,6 +109,7 @@ class ServiceModel {
       location: _optionalString(json['location']),
       imageUrl: _optionalString(json['imageUrl']),
       isActive: json['isActive'] is bool ? json['isActive'] as bool : true,
+      favorite: json['favorite'] == true,
       providerName: _optionalString(json['providerName']),
       providerEmail: _optionalString(json['providerEmail']),
       providerPhone: _optionalString(json['providerPhone']),
@@ -127,6 +130,7 @@ class ServiceModel {
       if (location != null) 'location': location,
       if (imageUrl != null) 'imageUrl': imageUrl,
       'isActive': isActive,
+      'favorite': favorite,
       if (providerName != null) 'providerName': providerName,
       if (providerEmail != null) 'providerEmail': providerEmail,
       if (providerPhone != null) 'providerPhone': providerPhone,
@@ -146,6 +150,7 @@ class ServiceModel {
     String? location,
     String? imageUrl,
     bool? isActive,
+    bool? favorite,
     String? providerName,
     String? providerEmail,
     String? providerPhone,
@@ -163,6 +168,7 @@ class ServiceModel {
       location: location ?? this.location,
       imageUrl: imageUrl ?? this.imageUrl,
       isActive: isActive ?? this.isActive,
+      favorite: favorite ?? this.favorite,
       providerName: providerName ?? this.providerName,
       providerEmail: providerEmail ?? this.providerEmail,
       providerPhone: providerPhone ?? this.providerPhone,
@@ -200,6 +206,7 @@ class ServiceModel {
         other.location == location &&
         other.imageUrl == imageUrl &&
         other.isActive == isActive &&
+        other.favorite == favorite &&
         other.providerName == providerName &&
         other.providerEmail == providerEmail &&
         other.providerPhone == providerPhone;
@@ -217,6 +224,7 @@ class ServiceModel {
         location,
         imageUrl,
         isActive,
+        favorite,
         providerName,
         providerEmail,
         providerPhone,

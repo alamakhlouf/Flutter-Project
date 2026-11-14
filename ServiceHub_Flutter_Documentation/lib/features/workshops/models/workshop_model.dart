@@ -45,6 +45,8 @@ class WorkshopModel {
     required this.status,
     required this.participantCount,
     this.coverImageUrl,
+    this.workshopType = 'IN_PERSON',
+    this.meetingUrl,
   });
 
   final String id;
@@ -61,7 +63,10 @@ class WorkshopModel {
   final DateTime registrationDeadline;
   final WorkshopStatus status;
   final int participantCount;
+  final String workshopType;
+  final String? meetingUrl;
 
+  bool get isOnline => workshopType.toUpperCase() == 'ONLINE';
   bool get isFull => participantCount >= capacity;
   bool get registrationClosed =>
       DateTime.now().isAfter(registrationDeadline) || isFull;
@@ -94,6 +99,8 @@ class WorkshopModel {
       registrationDeadline: deadline,
       status: WorkshopStatusX.fromString(json['status']?.toString()),
       participantCount: _int(json['participantCount']),
+      workshopType: '${json['workshopType'] ?? 'IN_PERSON'}',
+      meetingUrl: json['meetingUrl']?.toString(),
     );
   }
 
@@ -114,6 +121,8 @@ class WorkshopRegistration {
     this.workshopStartDateTime,
     this.workshopStatus,
     this.organizerName,
+    this.meetingUrl,
+    this.workshopType,
   });
 
   final String id;
@@ -127,8 +136,11 @@ class WorkshopRegistration {
   final DateTime? workshopStartDateTime;
   final String? workshopStatus;
   final String? organizerName;
+  final String? meetingUrl;
+  final String? workshopType;
 
   bool get isActive => status == 'REGISTERED';
+  bool get isOnline => workshopType?.toUpperCase() == 'ONLINE';
 
   factory WorkshopRegistration.fromJson(Map<String, dynamic> json) {
     final registeredAt = DateTime.tryParse('${json['registeredAt']}');
@@ -154,6 +166,8 @@ class WorkshopRegistration {
           : DateTime.tryParse('${json['workshopStartDateTime']}'),
       workshopStatus: json['workshopStatus']?.toString(),
       organizerName: json['organizerName']?.toString(),
+      meetingUrl: json['workshopMeetingUrl']?.toString() ?? json['meetingUrl']?.toString(),
+      workshopType: json['workshopType']?.toString(),
     );
   }
 }

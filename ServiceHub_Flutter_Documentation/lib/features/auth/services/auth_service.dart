@@ -1,3 +1,4 @@
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/app_config.dart';
@@ -12,9 +13,19 @@ class AuthService {
     TokenStorage? tokenStorage,
     http.Client? httpClient,
     String? baseUrl,
-  }) : _ownsClient = httpClient == null,
-       _storage = tokenStorage ?? SecureTokenStorage(),
-       _client = httpClient ?? http.Client() {
+    GoogleSignIn? googleSignIn,
+  })  : _ownsClient = httpClient == null,
+        _storage = tokenStorage ?? SecureTokenStorage(),
+        _client = httpClient ?? http.Client(),
+        _googleSignIn = googleSignIn ??
+            GoogleSignIn(
+              scopes: ['email', 'profile'],
+              serverClientId: const String.fromEnvironment(
+                'GOOGLE_SERVER_CLIENT_ID',
+                defaultValue:
+                    '721746615689-31o7qo4p1rsu2s6ku9ako4galdjs064p.apps.googleusercontent.com',
+              ),
+            ) {
     _api = ApiClient(
       baseUrl: baseUrl ?? AppConfig.apiBaseUrl,
       client: _client,
@@ -26,6 +37,7 @@ class AuthService {
   final bool _ownsClient;
   final TokenStorage _storage;
   final http.Client _client;
+  final GoogleSignIn _googleSignIn;
   late final ApiClient _api;
 
   ApiClient get api => _api;
@@ -92,8 +104,34 @@ class AuthService {
     return _persist(body);
   }
 
+  /// Triggers Google Account selection flow and returns Google ID token + account.
+  Future<GoogleSignInAccount?> selectGoogleAccount() async {
+    try {
+      return await _googleSignIn.signIn();
+    } catch (e) {
+      throw ApiException(message: 'Google Sign-In failed: $e');
+    }
+  }
+
+  Future<AuthUser> googleAuth({
+    required String idToken,
+    UserRole? role,
+  }) async {
+    final body = await _api.post(
+      '/api/auth/google',
+      body: {
+        'idToken': idToken,
+        if (role != null) 'role': role.apiValue,
+      },
+    );
+    return _persist(body);
+  }
+
   Future<void> logout() async {
     currentUser = null;
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
     await _storage.clear();
   }
 

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../design_system/app_colors.dart';
 import '../../auth/auth_scope.dart';
 import '../../services/models/service_model.dart';
 import '../bookings_keys.dart';
+import '../models/availability_model.dart';
 import '../services/booking_service.dart';
 
 class CreateBookingScreen extends StatefulWidget {
@@ -20,15 +20,67 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
-  TimeOfDay _selectedTime = const TimeOfDay(hour: 10, minute: 0);
 
+  bool _isLoadingSlots = false;
   bool _isLoading = false;
   String? _errorMessage;
+  List<AvailableSlot> _availableSlots = [];
+  AvailableSlot? _selectedSlot;
+
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+    _loadAvailableSlots();
+  }
 
   @override
   void dispose() {
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadAvailableSlots() async {
+    setState(() {
+      _isLoadingSlots = true;
+      _errorMessage = null;
+      _selectedSlot = null;
+      _availableSlots = [];
+    });
+
+    try {
+      final apiClient = AuthScope.of(context).api;
+      final bookingService = BookingService(api: apiClient);
+
+      final slots = await bookingService.fetchAvailableSlots(
+        providerId: widget.service.providerId,
+        date: _selectedDate,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _availableSlots = slots;
+        _isLoadingSlots = false;
+        if (slots.isNotEmpty) {
+          _selectedSlot = slots.first;
+        }
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _isLoadingSlots = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Failed to load available slots: $e';
+        _isLoadingSlots = false;
+      });
+    }
   }
 
   Future<void> _pickDate() async {
@@ -41,38 +93,20 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     );
     if (picked != null && mounted) {
       setState(() {
-        _selectedDate = DateTime(
-          picked.year,
-          picked.month,
-          picked.day,
-          _selectedTime.hour,
-          _selectedTime.minute,
-        );
+        _selectedDate = DateTime(picked.year, picked.month, picked.day);
       });
-    }
-  }
-
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime,
-    );
-    if (picked != null && mounted) {
-      setState(() {
-        _selectedTime = picked;
-        _selectedDate = DateTime(
-          _selectedDate.year,
-          _selectedDate.month,
-          _selectedDate.day,
-          picked.hour,
-          picked.minute,
-        );
-      });
+      _loadAvailableSlots();
     }
   }
 
   Future<void> _submitBooking() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_selectedSlot == null) {
+      setState(() {
+        _errorMessage = 'Please select an available time slot.';
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -80,12 +114,12 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     });
 
     try {
-      final apiClient =  AuthScope.of(context).api;
+      final apiClient = AuthScope.of(context).api;
       final bookingService = BookingService(api: apiClient);
 
       await bookingService.createBooking(
         serviceId: widget.service.id,
-        preferredDateTime: _selectedDate.toUtc(),
+        preferredDateTime: _selectedSlot!.startDateTime.toUtc(),
         description: _descriptionController.text,
       );
 
@@ -162,30 +196,49 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                   ),
                 ],
                 const SizedBox(height: 24),
-                Text('Preferred Date & Time', style: theme.textTheme.titleMedium),
+                Text('Select Date', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        key: BookingsKeys.preferredDateInput,
-                        icon: const Icon(Icons.calendar_today_outlined),
-                        label: Text(
-                          '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}',
-                        ),
-                        onPressed: _pickDate,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.access_time_outlined),
-                        label: Text(_selectedTime.format(context)),
-                        onPressed: _pickTime,
-                      ),
-                    ),
-                  ],
+                OutlinedButton.icon(
+                  key: BookingsKeys.preferredDateInput,
+                  icon: const Icon(Icons.calendar_today_outlined),
+                  label: Text(
+                    '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}',
+                  ),
+                  onPressed: _pickDate,
                 ),
+                const SizedBox(height: 24),
+                Text('Available Time Slots', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 8),
+                if (_isLoadingSlots)
+                  const Center(child: CircularProgressIndicator())
+                else if (_availableSlots.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text('No available time slots on this date (provider may be unavailable or working hours not set).', style: TextStyle(color: AppColors.textSecondary)),
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _availableSlots.map((slot) {
+                      final isSelected = _selectedSlot == slot;
+                      final startTimeFormatted = '${slot.startDateTime.toLocal().hour.toString().padLeft(2, '0')}:${slot.startDateTime.toLocal().minute.toString().padLeft(2, '0')}';
+                      final endTimeFormatted = '${slot.endDateTime.toLocal().hour.toString().padLeft(2, '0')}:${slot.endDateTime.toLocal().minute.toString().padLeft(2, '0')}';
+
+                      return ChoiceChip(
+                        label: Text('$startTimeFormatted - $endTimeFormatted'),
+                        selected: isSelected,
+                        selectedColor: AppColors.primary.withOpacity(0.2),
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _selectedSlot = slot;
+                            });
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
                 const SizedBox(height: 24),
                 TextFormField(
                   key: BookingsKeys.descriptionInput,
@@ -206,7 +259,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                 const SizedBox(height: 32),
                 FilledButton(
                   key: BookingsKeys.submitBooking,
-                  onPressed: _isLoading ? null : _submitBooking,
+                  onPressed: _isLoading || _availableSlots.isEmpty ? null : _submitBooking,
                   child: _isLoading
                       ? const SizedBox(
                           height: 20,

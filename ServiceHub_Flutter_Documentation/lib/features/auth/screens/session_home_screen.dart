@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/app_routes.dart';
+import '../../../core/services/fcm_service.dart';
 import '../../../design_system/app_colors.dart';
+import '../../workshops/screens/workshop_details_screen.dart';
 import '../auth_scope.dart';
 import '../../auth/models/auth_user.dart';
 import '../../inventory/models/inventory_product_model.dart';
@@ -11,9 +13,12 @@ import '../../inventory/screens/inventory_catalog_screen.dart';
 import '../../inventory/screens/inventory_details_screen.dart';
 import '../../inventory/screens/inventory_list_screen.dart';
 import '../../inventory/screens/supplier_inventory_screen.dart';
+import '../../inventory/screens/favorite_products_screen.dart';
+import '../../services/screens/favorite_services_screen.dart';
 import '../../inventory/models/product_order_model.dart';
 import '../../inventory/screens/product_orders_screen.dart';
 import '../../inventory/services/product_order_service.dart';
+import '../../notifications/screens/notifications_screen.dart';
 import '../../bookings/models/booking_model.dart';
 import '../../profile/screens/edit_profile_screen.dart';
 import '../../profile/screens/profile_screen.dart';
@@ -32,10 +37,13 @@ import '../../services/screens/services_catalog_screen.dart';
 import '../../bookings/screens/booking_details_screen.dart';
 import '../../bookings/screens/booking_list_screen.dart';
 import '../../bookings/screens/create_booking_screen.dart';
+import '../../bookings/screens/provider_calendar_screen.dart';
+import '../../bookings/screens/availability_management_screen.dart';
 import '../../workshops/models/workshop_model.dart';
 import '../../workshops/screens/workshop_catalog_screen.dart';
 import '../../workshops/screens/workshop_form_screen.dart';
 import '../../workshops/screens/workshop_management_screen.dart';
+import '../../workshops/services/workshop_service.dart';
 
 class SessionHomeScreen extends StatelessWidget {
   const SessionHomeScreen({super.key});
@@ -50,6 +58,7 @@ class SessionHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Navigator(
+      key: FcmService.sessionNavigatorKey,
       initialRoute: AppRoutes.home,
       onGenerateInitialRoutes: (navigator, initialRoute) => [_homeRoute()],
       onGenerateRoute: (settings) {
@@ -64,6 +73,11 @@ class SessionHomeScreen extends StatelessWidget {
               settings: settings,
               builder: (_) => const MyActivityScreen(),
             );
+          case AppRoutes.notifications:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const NotificationsScreen(),
+            );
           case AppRoutes.adminReports:
             return MaterialPageRoute<void>(
               settings: settings,
@@ -76,18 +90,26 @@ class SessionHomeScreen extends StatelessWidget {
             );
           case AppRoutes.productOrderDetails:
             final order = settings.arguments;
-            if (order is! ProductOrderModel) return _homeRoute();
-            return MaterialPageRoute<void>(
-              settings: settings,
-              builder: (_) => ProductOrderDetailsScreen(
-                order: order,
-                isSupplier:
-                    AuthScope.of(context).user.role == UserRole.supplier,
-                orderService: ProductOrderService(
-                  api: AuthScope.of(context).api,
+            if (order is ProductOrderModel) {
+              return MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => ProductOrderDetailsScreen(
+                  order: order,
+                  isSupplier:
+                      AuthScope.of(context).user.role == UserRole.supplier,
+                  orderService: ProductOrderService(
+                    api: AuthScope.of(context).api,
+                  ),
                 ),
-              ),
-            );
+              );
+            }
+            if (order is String && order.isNotEmpty) {
+              return MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => _ProductOrderDetailsById(orderId: order),
+              );
+            }
+            return _homeRoute();
           case AppRoutes.editProfile:
             final args = settings.arguments;
             if (args is Map<String, dynamic> &&
@@ -183,6 +205,16 @@ class SessionHomeScreen extends StatelessWidget {
               settings: settings,
               builder: (_) => const InventoryCatalogScreen(),
             );
+          case AppRoutes.favoriteProducts:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const FavoriteProductsScreen(),
+            );
+          case AppRoutes.favoriteServices:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const FavoriteServicesScreen(),
+            );
           case AppRoutes.inventoryDetails:
             final product = settings.arguments is InventoryProduct
                 ? settings.arguments as InventoryProduct
@@ -237,11 +269,39 @@ class SessionHomeScreen extends StatelessWidget {
               settings: settings,
               builder: (_) => BookingDetailsScreen(bookingId: bookingId),
             );
+          case AppRoutes.providerCalendar:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const ProviderCalendarScreen(),
+            );
+          case AppRoutes.availabilityManagement:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const AvailabilityManagementScreen(),
+            );
           case AppRoutes.workshops:
             return MaterialPageRoute<void>(
               settings: settings,
               builder: (_) => const WorkshopCatalogScreen(),
             );
+          case AppRoutes.workshopDetails:
+            final workshop = settings.arguments is WorkshopModel
+                ? settings.arguments as WorkshopModel
+                : null;
+            if (workshop != null) {
+              return MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => WorkshopDetailsScreen(workshop: workshop),
+              );
+            }
+            final workshopId = settings.arguments;
+            if (workshopId is String && workshopId.isNotEmpty) {
+              return MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => _WorkshopDetailsById(workshopId: workshopId),
+              );
+            }
+            return _homeRoute();
           case AppRoutes.createWorkshop:
             return MaterialPageRoute<void>(
               settings: settings,
@@ -289,6 +349,14 @@ class _AccountHomeState extends State<_AccountHome> {
     null,
     null,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FcmService.flushPendingNavigation();
+    });
+  }
 
   void _selectPage(int index) {
     setState(() {
@@ -408,5 +476,106 @@ class _AccountHomeState extends State<_AccountHome> {
         ),
       ),
     );
+  }
+}
+
+class _ProductOrderDetailsById extends StatefulWidget {
+  const _ProductOrderDetailsById({required this.orderId});
+
+  final String orderId;
+
+  @override
+  State<_ProductOrderDetailsById> createState() =>
+      _ProductOrderDetailsByIdState();
+}
+
+class _ProductOrderDetailsByIdState extends State<_ProductOrderDetailsById> {
+  ProductOrderModel? _order;
+  String? _error;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_order != null || _error != null) return;
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final order = await ProductOrderService(api: AuthScope.of(context).api)
+          .fetchOrder(widget.orderId);
+      if (mounted) setState(() => _order = order);
+    } on Object {
+      if (mounted) {
+        setState(() => _error = 'Unable to load this product order.');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Order details')),
+        body: Center(child: Text(_error!)),
+      );
+    }
+    final order = _order;
+    if (order == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return ProductOrderDetailsScreen(
+      order: order,
+      isSupplier: AuthScope.of(context).user.role == UserRole.supplier,
+      orderService: ProductOrderService(api: AuthScope.of(context).api),
+    );
+  }
+}
+
+class _WorkshopDetailsById extends StatefulWidget {
+  const _WorkshopDetailsById({required this.workshopId});
+
+  final String workshopId;
+
+  @override
+  State<_WorkshopDetailsById> createState() => _WorkshopDetailsByIdState();
+}
+
+class _WorkshopDetailsByIdState extends State<_WorkshopDetailsById> {
+  WorkshopModel? _workshop;
+  String? _error;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_workshop != null || _error != null) return;
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final workshop = await WorkshopService(api: AuthScope.of(context).api)
+          .getWorkshop(widget.workshopId);
+      if (mounted) setState(() => _workshop = workshop);
+    } on Object {
+      if (mounted) {
+        setState(() => _error = 'Unable to load this workshop.');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Workshop details')),
+        body: Center(child: Text(_error!)),
+      );
+    }
+    final workshop = _workshop;
+    if (workshop == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return WorkshopDetailsScreen(workshop: workshop);
   }
 }

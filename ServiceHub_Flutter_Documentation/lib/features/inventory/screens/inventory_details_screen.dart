@@ -80,6 +80,25 @@ class _InventoryDetailsScreenState extends State<InventoryDetailsScreen> {
     }
   }
 
+  Future<void> _toggleFavorite() async {
+    final product = _product;
+    if (product == null) return;
+    try {
+      final updated = product.favorite
+          ? await _service.unfavoriteProduct(product.id).then((_) => product.copyWith(favorite: false))
+          : await _service.favoriteProduct(product.id);
+      if (!mounted) return;
+      setState(() {
+        _product = updated;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
   Future<void> _buy() async {
     final product = _product;
     if (product == null) return;
@@ -138,7 +157,20 @@ class _InventoryDetailsScreenState extends State<InventoryDetailsScreen> {
   Widget build(BuildContext context) {
     final product = _product;
     return Scaffold(
-      appBar: AppBar(title: const Text('Inventory Details')),
+      appBar: AppBar(
+        title: const Text('Inventory Details'),
+        actions: [
+          if (product != null)
+            IconButton(
+              icon: Icon(
+                product.favorite ? Icons.favorite : Icons.favorite_border,
+                color: product.favorite ? AppColors.error : AppColors.primary,
+              ),
+              onPressed: _toggleFavorite,
+              tooltip: product.favorite ? 'Remove from favorites' : 'Add to favorites',
+            ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
