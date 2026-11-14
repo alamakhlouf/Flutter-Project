@@ -23,8 +23,7 @@ app:
     secret: ${JWT_SECRET:servicehub-default-dev-signing-key-at-least-32-bytes-long}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   google:
-    client-id: ${GOOGLE_CLIENT_ID:.apps.googleusercontent.com}
-    
+   
     redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/api/integrations/google/callback}
   firebase:
     credentials-file: ${FIREBASE_CREDENTIALS:classpath:firebase-service-account.json}
